@@ -34,6 +34,8 @@ const OPERATORS = {
   cd:    { id: 'cd',    name: 'ČD',         fullName: 'České dráhy',    color: '#003D7E', type: 'rail'  },
   nmbs:  { id: 'nmbs',  name: 'NMBS',       fullName: 'NMBS Belgium',   color: '#0070C0', type: 'rail'  },
   italo: { id: 'italo', name: 'Italo',      fullName: 'Italo NTV',      color: '#E4003B', type: 'rail'  },
+  mvg:   { id: 'mvg',   name: 'MVG',        fullName: 'MVG München',    color: '#0B6E4F', type: 'metro' },
+  obb:   { id: 'obb',   name: 'ÖBB',        fullName: 'ÖBB Austria',    color: '#E2001A', type: 'rail'  },
 };
 
 const CITIES = [
@@ -45,6 +47,23 @@ const CITIES = [
   { id: 'brussels',  name: 'Brussels',  country: 'BE', emoji: '🇧🇪', transitPass: { name: 'STIB Day Pass',         price: 5.00, op: 'nmbs' } },
   { id: 'rome',      name: 'Rome',      country: 'IT', emoji: '🇮🇹', transitPass: { name: 'ATAC Day Pass',         price: 4.00, op: 'trit' } },
   { id: 'lyon',      name: 'Lyon',      country: 'FR', emoji: '🇫🇷', transitPass: { name: 'TCL Day Pass',          price: 3.00, op: 'sncf' } },
+  { id: 'munich',    name: 'Munich',    country: 'DE', emoji: '🇩🇪', transitPass: { name: 'MVG Day Pass',          price: 8.60, op: 'mvg'  } },
+];
+
+// ─── LOCATIONS (for door-to-door address search) ──────────────────────────────
+const LOCATIONS = [
+  { id: 'l1',  label: 'Westendstraße 8, Munich',           short: 'Westendstr. 8',       city: 'munich', type: 'address',  emoji: '📍' },
+  { id: 'l2',  label: 'München Hauptbahnhof',              short: 'München Hbf',          city: 'munich', type: 'station',  emoji: '🚉' },
+  { id: 'l3',  label: 'Marienplatz, Munich',               short: 'Marienplatz',          city: 'munich', type: 'station',  emoji: '🚇' },
+  { id: 'l4',  label: 'München ZOB (Bus Station)',         short: 'München ZOB',          city: 'munich', type: 'station',  emoji: '🚌' },
+  { id: 'l5',  label: 'Via Navigli 14, Milan',             short: 'Via Navigli 14',       city: 'milan',  type: 'address',  emoji: '📍' },
+  { id: 'l6',  label: 'Milano Centrale',                   short: 'Milano Centrale',      city: 'milan',  type: 'station',  emoji: '🚉' },
+  { id: 'l7',  label: 'Porta Genova FS, Milan',            short: 'Porta Genova FS',      city: 'milan',  type: 'station',  emoji: '🚇' },
+  { id: 'l8',  label: 'Milano Lampugnano (Bus Station)',   short: 'Lampugnano',           city: 'milan',  type: 'station',  emoji: '🚌' },
+  { id: 'l9',  label: 'Berlin Hauptbahnhof',               short: 'Berlin Hbf',           city: 'berlin', type: 'station',  emoji: '🚉' },
+  { id: 'l10', label: 'Paris Gare de l\'Est',              short: 'Paris GdE',            city: 'paris',  type: 'station',  emoji: '🚉' },
+  { id: 'l11', label: 'Amsterdam Centraal',                short: 'Amsterdam CS',         city: 'amsterdam', type: 'station', emoji: '🚉' },
+  { id: 'l12', label: 'Donnersbergerbrücke, Munich',       short: 'Donnersbergerbrücke',  city: 'munich', type: 'station',  emoji: '🚇' },
 ];
 
 const getCityById  = (id)   => CITIES.find(c => c.id === id);
@@ -102,6 +121,31 @@ const ROUTES = [
     legs:[
       { operator:'flix', vehicle:'FlixBus 312',type:'bus',  from:'Berlin ZOB',   to:'Prague Florenc', dep:'09:30', arr:'14:15', dur:285, platform:'Bay 1' },
     ], totalDur:285, totalPrice:14, transfers:0 },
+  // Munich → Milan (door-to-door)
+  { id:'r12', origin:'munich', destination:'milan', label:'Fastest · Door-to-door', tags:['fastest'], doorToDoor: true,
+    fromAddress: 'Westendstraße 8, Munich', toAddress: 'Via Navigli 14, Milan',
+    legs:[
+      { operator:'mvg',  vehicle:'U5',           type:'metro', from:'Westendstraße',    to:'München Hbf',        dep:'06:42', arr:'06:50', dur:8,   platform:'U5',  local: true },
+      { operator:'db',   vehicle:'EC 89',        type:'rail',  from:'München Hbf',      to:'Verona Porta Nuova', dep:'07:26', arr:'12:41', dur:315, platform:'11' },
+      { operator:'trit', vehicle:'RV 2161',      type:'rail',  from:'Verona Porta Nuova', to:'Milano Centrale',  dep:'13:10', arr:'14:35', dur:85,  platform:'2' },
+      { operator:'atm',  vehicle:'M2 → M2',      type:'metro', from:'Milano Centrale',  to:'Porta Genova FS',    dep:'14:45', arr:'14:57', dur:12,  platform:'M2', local: true },
+    ], totalDur:495, totalPrice:79, transfers:3 },
+  { id:'r13', origin:'munich', destination:'milan', label:'Cheapest · Door-to-door', tags:['cheapest'], doorToDoor: true,
+    fromAddress: 'Westendstraße 8, Munich', toAddress: 'Via Navigli 14, Milan',
+    legs:[
+      { operator:'mvg',  vehicle:'S7',           type:'metro', from:'Donnersbergerbrücke', to:'München ZOB',     dep:'08:15', arr:'08:28', dur:13,  platform:'S7',  local: true },
+      { operator:'flix', vehicle:'FlixBus 1940', type:'bus',   from:'München ZOB',        to:'Milano Lampugnano', dep:'09:00', arr:'18:15', dur:555, platform:'Bay 7' },
+      { operator:'atm',  vehicle:'M1 → M2',      type:'metro', from:'Lampugnano',         to:'Porta Genova FS',   dep:'18:30', arr:'18:52', dur:22,  platform:'M1', local: true },
+    ], totalDur:637, totalPrice:38, transfers:2 },
+  { id:'r14', origin:'munich', destination:'milan', label:'Via Innsbruck · Scenic', tags:['scenic'], doorToDoor: true,
+    fromAddress: 'Westendstraße 8, Munich', toAddress: 'Via Navigli 14, Milan',
+    legs:[
+      { operator:'mvg',  vehicle:'U5',           type:'metro', from:'Westendstraße',      to:'München Hbf',       dep:'07:12', arr:'07:20', dur:8,   platform:'U5',  local: true },
+      { operator:'obb',  vehicle:'EC 85',        type:'rail',  from:'München Hbf',        to:'Innsbruck Hbf',     dep:'07:52', arr:'09:36', dur:104, platform:'9' },
+      { operator:'obb',  vehicle:'EC 81',        type:'rail',  from:'Innsbruck Hbf',      to:'Verona Porta Nuova', dep:'10:04', arr:'13:24', dur:200, platform:'4' },
+      { operator:'trit', vehicle:'FR 9535',      type:'rail',  from:'Verona Porta Nuova', to:'Milano Centrale',   dep:'13:50', arr:'14:55', dur:65,  platform:'1' },
+      { operator:'atm',  vehicle:'M2 → M2',      type:'metro', from:'Milano Centrale',    to:'Porta Genova FS',   dep:'15:05', arr:'15:17', dur:12,  platform:'M2', local: true },
+    ], totalDur:485, totalPrice:69, transfers:4 },
 ];
 
 const INSPIRATION = [
@@ -110,6 +154,7 @@ const INSPIRATION = [
   { id:'i3', title:'Milan Day Trip',     subtitle:'Frecciarossa fast',     from:'milan',     to:'rome',     price:39,  dur:'2h 55m', gradient:'linear-gradient(135deg,#006940 0%,#34C759 100%)' },
   { id:'i4', title:'Amsterdam Break',    subtitle:'via Thalys',            from:'amsterdam', to:'brussels', price:29,  dur:'2h',     gradient:'linear-gradient(135deg,#00A0DE 0%,#003366 100%)' },
   { id:'i5', title:'Berlin → Paris',     subtitle:'ICE + TGV combo',       from:'berlin',    to:'paris',    price:59,  dur:'8h 30m', gradient:'linear-gradient(135deg,#E30614 0%,#003366 100%)' },
+  { id:'i6', title:'Munich → Milan',   subtitle:'Door-to-door · 3 transfers', from:'munich', to:'milan',    price:38,  dur:'7h',     gradient:'linear-gradient(135deg,#0B6E4F 0%,#D52B1E 100%)' },
 ];
 
 const INIT_TICKETS = [
@@ -205,17 +250,32 @@ const MockQR = ({ value }) => {
 
 // ─── SCREEN: HOME ─────────────────────────────────────────────────────────────
 function HomeScreen({ appState, dispatch }) {
-  const { mode } = appState;
   const [fromVal, setFromVal] = useState('');
   const [toVal,   setToVal]   = useState('');
   const [fromSug, setFromSug] = useState([]);
   const [toSug,   setToSug]   = useState([]);
 
-  const suggest = val => val.length < 1 ? [] : CITIES.filter(c => c.name.toLowerCase().startsWith(val.toLowerCase()));
+  const suggest = val => {
+    if (val.length < 1) return [];
+    const v = val.toLowerCase();
+    const cities = CITIES.filter(c => c.name.toLowerCase().startsWith(v)).map(c => ({ id: c.id, label: c.name, sub: c.country, emoji: c.emoji, cityName: c.name }));
+    const locs = LOCATIONS.filter(l => l.label.toLowerCase().includes(v)).map(l => ({ id: l.id, label: l.label, sub: l.type, emoji: l.emoji, cityName: getCityById(l.city)?.name || l.city }));
+    return [...locs, ...cities].slice(0, 6);
+  };
+
+  const resolveCityName = (val) => {
+    // Check if it's a location label, extract city name for route matching
+    const loc = LOCATIONS.find(l => l.label.toLowerCase() === val.toLowerCase());
+    if (loc) return getCityById(loc.city)?.name || val;
+    // Check if it's already a city name
+    const city = getCityByName(val);
+    if (city) return city.name;
+    return val;
+  };
 
   const doSearch = (from, to) => {
     if (!from || !to) return;
-    dispatch({ type: 'SEARCH', from, to });
+    dispatch({ type: 'SEARCH', from: resolveCityName(from), to: resolveCityName(to) });
   };
 
   return (
@@ -225,15 +285,12 @@ function HomeScreen({ appState, dispatch }) {
         <p style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs mb-1">Good morning 👋</p>
         <h1 className="text-white text-xl font-bold mb-4">Where to next?</h1>
 
-        {/* Mode Toggle */}
-        <div className="flex rounded-xl p-1 mb-4" style={{ background: 'rgba(255,255,255,0.1)' }}>
-          {[['intercity','🌍 Intercity'],['incity','🏙️ In-City']].map(([m, lbl]) => (
-            <button key={m} onClick={() => dispatch({ type:'SET_MODE', mode:m })}
-              className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={mode === m ? { background: C.accent, color: C.primary } : { color: 'rgba(255,255,255,0.7)' }}>
-              {lbl}
-            </button>
-          ))}
+        {/* Door-to-door badge */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ background: C.accent, color: C.primary }}>
+            🚪 Door-to-door
+          </span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Trains · Buses · Metro — one booking</span>
         </div>
 
         {/* Search card */}
@@ -243,19 +300,18 @@ function HomeScreen({ appState, dispatch }) {
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
               <div className="w-2 h-2 rounded-full border-2 flex-shrink-0" style={{ borderColor: C.primary }} />
               <input className="flex-1 text-sm outline-none bg-transparent" style={{ color: C.text }}
-                placeholder={mode === 'incity' ? 'Your location' : 'From city or station'}
+                placeholder="Address, station, or city"
                 value={fromVal}
                 onChange={e => { setFromVal(e.target.value); setFromSug(suggest(e.target.value)); }} />
               {fromVal && <button onClick={() => { setFromVal(''); setFromSug([]); }}><X size={14} color={C.muted} /></button>}
             </div>
             {fromSug.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border overflow-hidden" style={{ borderColor: C.border, zIndex: 30 }}>
-                {fromSug.map(c => (
-                  <button key={c.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
-                    style={{ ':hover': { background: C.bg } }}
-                    onClick={() => { setFromVal(c.name); setFromSug([]); }}>
-                    <span>{c.emoji}</span><span style={{ color: C.text }}>{c.name}</span>
-                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{c.country}</span>
+                {fromSug.map(s => (
+                  <button key={s.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
+                    onClick={() => { setFromVal(s.label); setFromSug([]); }}>
+                    <span>{s.emoji}</span><span style={{ color: C.text }}>{s.label}</span>
+                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{s.sub}</span>
                   </button>
                 ))}
               </div>
@@ -278,18 +334,18 @@ function HomeScreen({ appState, dispatch }) {
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
               <MapPin size={14} color={C.accent} className="flex-shrink-0" />
               <input className="flex-1 text-sm outline-none bg-transparent" style={{ color: C.text }}
-                placeholder={mode === 'incity' ? 'Destination stop' : 'To city or station'}
+                placeholder="Destination address or city"
                 value={toVal}
                 onChange={e => { setToVal(e.target.value); setToSug(suggest(e.target.value)); }} />
               {toVal && <button onClick={() => { setToVal(''); setToSug([]); }}><X size={14} color={C.muted} /></button>}
             </div>
             {toSug.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border overflow-hidden" style={{ borderColor: C.border, zIndex: 29 }}>
-                {toSug.map(c => (
-                  <button key={c.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
-                    onClick={() => { setToVal(c.name); setToSug([]); }}>
-                    <span>{c.emoji}</span><span style={{ color: C.text }}>{c.name}</span>
-                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{c.country}</span>
+                {toSug.map(s => (
+                  <button key={s.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
+                    onClick={() => { setToVal(s.label); setToSug([]); }}>
+                    <span>{s.emoji}</span><span style={{ color: C.text }}>{s.label}</span>
+                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{s.sub}</span>
                   </button>
                 ))}
               </div>
@@ -390,7 +446,10 @@ function ResultsScreen({ appState, dispatch }) {
           <ArrowRight size={16} color="rgba(255,255,255,0.6)" />
           <h1 className="text-white font-bold text-lg">{searchTo}</h1>
         </div>
-        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{allRoutes.length} routes · Today</p>
+        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          {allRoutes.length} routes · Today
+          {allRoutes.some(r => r.doorToDoor) && ' · 🚪 Door-to-door available'}
+        </p>
       </div>
 
       {/* Filter tabs */}
@@ -459,9 +518,16 @@ function ResultsScreen({ appState, dispatch }) {
               {/* Expanded legs */}
               {isExp && (
                 <div className="border-t px-4 pb-3" style={{ borderColor: C.border }}>
+                  {route.doorToDoor && (
+                    <div className="flex items-center gap-2 py-2 mb-1">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: C.success + '15', color: C.success }}>🚪 Door-to-door</span>
+                      <span className="text-xs" style={{ color: C.muted }}>Local transit included</span>
+                    </div>
+                  )}
                   {route.legs.map((leg, j) => (
                     <div key={j}>
-                      <div className="flex items-start gap-3 py-3">
+                      <div className={`flex items-start gap-3 py-3 ${leg.local ? 'pl-2 rounded-xl' : ''}`}
+                        style={leg.local ? { background: C.success + '08', border: `1px dashed ${C.success}30` } : {}}>
                         <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                           style={{ background: OPERATORS[leg.operator].color + '20' }}>
                           <VehicleIcon type={leg.type} size={13} />
@@ -471,6 +537,7 @@ function ResultsScreen({ appState, dispatch }) {
                             <span className="text-xs font-bold" style={{ color: C.text }}>{leg.from}</span>
                             <ArrowRight size={11} color={C.muted} />
                             <span className="text-xs font-bold" style={{ color: C.text }}>{leg.to}</span>
+                            {leg.local && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.success + '20', color: C.success, fontSize: 10 }}>Local</span>}
                           </div>
                           <p className="text-xs" style={{ color: C.muted }}>{OPERATORS[leg.operator].fullName} · {leg.vehicle} · Plat. {leg.platform}</p>
                           <p className="text-xs" style={{ color: C.muted }}>{leg.dep}–{leg.arr} · {fmtDur(leg.dur)}</p>
@@ -490,17 +557,25 @@ function ResultsScreen({ appState, dispatch }) {
                   <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
                     className="w-full mt-2 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white"
                     style={{ background: C.primary }}>
-                    See journey details <ChevronRight size={16} />
+                    {route.doorToDoor ? 'Book entire journey' : 'See journey details'} <ChevronRight size={16} />
                   </button>
                 </div>
               )}
 
               {!isExp && (
-                <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
-                  className="w-full border-t py-3 text-sm font-semibold flex items-center justify-center gap-1"
-                  style={{ borderColor: C.border, color: C.primary }}>
-                  View details <ChevronRight size={14} />
-                </button>
+                <div className="border-t" style={{ borderColor: C.border }}>
+                  {route.doorToDoor && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: C.success + '15', color: C.success }}>🚪 Door-to-door</span>
+                      <span className="text-xs" style={{ color: C.muted }}>{route.legs.filter(l=>l.local).length} local connections included</span>
+                    </div>
+                  )}
+                  <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
+                    className="w-full py-3 text-sm font-semibold flex items-center justify-center gap-1"
+                    style={{ color: C.primary }}>
+                    {route.doorToDoor ? 'Book entire journey' : 'View details'} <ChevronRight size={14} />
+                  </button>
+                </div>
               )}
             </div>
           );
@@ -529,10 +604,16 @@ function DetailScreen({ appState, dispatch }) {
           <ChevronRight size={14} className="rotate-180" /> Back to results
         </button>
         <h1 className="text-white font-bold text-lg">{searchFrom} → {searchTo}</h1>
+        {route.doorToDoor && (
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: C.success, color: 'white' }}>🚪 Door-to-door</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{route.fromAddress} → {route.toAddress}</span>
+          </div>
+        )}
         <div className="flex items-center gap-3 mt-2">
           <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{fmtDur(route.totalDur)}</span>
           <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
-          <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{route.transfers === 0 ? 'Direct' : `${route.transfers} transfer`}</span>
+          <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{route.transfers === 0 ? 'Direct' : `${route.transfers} transfer${route.transfers > 1 ? 's' : ''}`}</span>
           <span className="text-lg font-bold text-white ml-auto">€{total.toFixed(2)}</span>
         </div>
       </div>
@@ -543,7 +624,13 @@ function DetailScreen({ appState, dispatch }) {
           const tight = i < route.legs.length - 1 && transferMins(route.legs[i], route.legs[i+1]) < 10;
           return (
             <div key={i}>
-              <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+              <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)', border: leg.local ? `1.5px dashed ${C.success}40` : 'none' }}>
+                {leg.local && (
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: C.success + '15', color: C.success }}>Local transit</span>
+                    <span className="text-xs" style={{ color: C.muted }}>Included in booking</span>
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: op.color }}>
@@ -930,83 +1017,199 @@ function WalletScreen({ appState, dispatch }) {
 
 // ─── SCREEN: MAP ──────────────────────────────────────────────────────────────
 function MapScreen({ appState, dispatch }) {
-  const [progress, setProgress] = useState(35);
+  const [progress, setProgress] = useState(18);
+  const [activeLeg, setActiveLeg] = useState(1); // 0-based, start on leg index 1 (EC 89)
+
+  // Munich → Milan journey waypoints for the map
+  const WAYPOINTS = [
+    { x: 45,  y: 215, label: 'Westendstr.',     short: 'Start', color: C.success },
+    { x: 80,  y: 190, label: 'München Hbf',     short: 'MUC',   color: '#0B6E4F' },
+    { x: 160, y: 140, label: 'Innsbruck',        short: 'IBK',   color: '#E2001A' },
+    { x: 240, y: 95,  label: 'Verona PN',        short: 'VRN',   color: '#006940' },
+    { x: 310, y: 60,  label: 'Milano Centrale',  short: 'MIL',   color: '#D52B1E' },
+    { x: 340, y: 45,  label: 'Porta Genova',     short: 'End',   color: C.accent },
+  ];
+
+  // The journey legs for this map (matches r12 "Fastest" route)
+  const MAP_LEGS = [
+    { op: 'mvg',  vehicle: 'U5',      from: 0, to: 1, status: 'completed', delay: 0 },
+    { op: 'db',   vehicle: 'EC 89',   from: 1, to: 3, status: 'active',    delay: 8, nextStop: 'Kufstein', nextIn: 18 },
+    { op: 'trit', vehicle: 'RV 2161', from: 3, to: 4, status: 'upcoming',  delay: 0 },
+    { op: 'atm',  vehicle: 'M2',      from: 4, to: 5, status: 'upcoming',  delay: 0 },
+  ];
+
   useEffect(() => {
-    const t = setInterval(() => setProgress(p => p >= 95 ? 95 : +(p + 0.3).toFixed(1)), 400);
+    const t = setInterval(() => {
+      setProgress(p => {
+        if (p >= 95) return 95;
+        return +(p + 0.15).toFixed(2);
+      });
+    }, 400);
     return () => clearInterval(t);
   }, []);
 
-  const pct = progress / 100;
+  // Calculate vehicle position along the active leg's path
+  const activeMapLeg = MAP_LEGS[activeLeg];
+  const legFrom = WAYPOINTS[activeMapLeg.from];
+  const legTo   = WAYPOINTS[activeMapLeg.to];
+  // Progress within the active leg (the EC 89 leg goes from München to Verona via Innsbruck)
+  const legPct = Math.min(1, progress / 55); // scale so 55% overall = end of this leg
+  // Interpolate through intermediate waypoints for curved path
+  const interpPoints = [];
+  for (let i = activeMapLeg.from; i <= activeMapLeg.to; i++) interpPoints.push(WAYPOINTS[i]);
+  const totalSegDist = interpPoints.length - 1;
+  const segIdx = Math.min(Math.floor(legPct * totalSegDist), totalSegDist - 1);
+  const segPct = (legPct * totalSegDist) - segIdx;
+  const p1 = interpPoints[segIdx];
+  const p2 = interpPoints[Math.min(segIdx + 1, interpPoints.length - 1)];
+  const vx = p1.x + (p2.x - p1.x) * segPct;
+  const vy = p1.y + (p2.y - p1.y) * segPct;
 
   return (
     <div className="flex flex-col flex-1 pb-20 fade-in">
-      {/* Disruption */}
-      <div className="mx-4 mt-4 p-3 rounded-2xl flex items-start gap-3"
+      {/* Header */}
+      <div style={{ background: C.primary }} className="px-5 pt-10 pb-4 rounded-b-3xl">
+        <h1 className="text-white font-bold text-lg">🇩🇪 Munich → Milan 🇮🇹</h1>
+        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Live navigation · Door-to-door journey</p>
+      </div>
+
+      {/* Disruption alert */}
+      <div className="mx-4 mt-3 p-3 rounded-2xl flex items-start gap-3"
         style={{ background:'#FFF3CD', border:'1px solid #FFE082' }}>
         <AlertTriangle size={16} color={C.warning} className="flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-xs font-bold" style={{ color:'#856404' }}>12 min delay on ICE 573</p>
-          <p className="text-xs" style={{ color:'#856404' }}>Connection at Frankfurt still possible</p>
+          <p className="text-xs font-bold" style={{ color:'#856404' }}>+8 min delay on EC 89 (DB)</p>
+          <p className="text-xs" style={{ color:'#856404' }}>Transfer at Verona still possible (29 → 21 min buffer)</p>
         </div>
       </div>
 
-      {/* Map */}
+      {/* Map visualization */}
       <div className="relative mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg" style={{ minHeight: 260, background:'linear-gradient(135deg,#e8f4f8 0%,#d4e8f0 50%,#c8e0ea 100%)' }}>
         <svg width="100%" height="260" viewBox="0 0 380 260" preserveAspectRatio="xMidYMid meet">
           {/* Grid */}
           {[...Array(7)].map((_,i) => <line key={`h${i}`} x1="0" y1={i*38} x2="380" y2={i*38} stroke="rgba(255,255,255,0.35)" strokeWidth="1" />)}
           {[...Array(7)].map((_,i) => <line key={`v${i}`} x1={i*54} y1="0" x2={i*54} y2="260" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />)}
-          {/* Route dashed line */}
-          <line x1="60" y1="200" x2="320" y2="50" stroke={C.primary} strokeWidth="3" strokeDasharray="10 5" strokeLinecap="round" />
-          {/* Completed segment */}
-          <line x1="60" y1="200" x2={60 + 260 * pct} y2={200 - 150 * pct} stroke={C.success} strokeWidth="4" strokeLinecap="round" />
-          {/* Origin */}
-          <circle cx="60" cy="200" r="9" fill={C.primary} />
-          <circle cx="60" cy="200" r="16" fill="none" stroke={C.primary} strokeWidth="2" opacity="0.3" />
-          {/* Destination */}
-          <circle cx="320" cy="50" r="9" fill={C.accent} />
-          <circle cx="320" cy="50" r="16" fill="none" stroke={C.accent} strokeWidth="2" opacity="0.3" />
-          {/* Vehicle */}
-          <circle cx={60 + 260 * pct} cy={200 - 150 * pct} r="11" fill={C.success} />
-          <circle cx={60 + 260 * pct} cy={200 - 150 * pct} r="18" fill="none" stroke={C.success} strokeWidth="2.5" opacity="0.4" />
-          <circle cx={60 + 260 * pct} cy={200 - 150 * pct} r="5" fill="white" />
+
+          {/* Route segments */}
+          {WAYPOINTS.map((wp, i) => {
+            if (i === 0) return null;
+            const prev = WAYPOINTS[i - 1];
+            const isCompleted = i <= activeMapLeg.from;
+            const isActive = i > activeMapLeg.from && i <= activeMapLeg.to;
+            return (
+              <line key={`seg${i}`} x1={prev.x} y1={prev.y} x2={wp.x} y2={wp.y}
+                stroke={isCompleted ? C.success : isActive ? C.primary : C.muted + '40'}
+                strokeWidth={isActive ? 3.5 : isCompleted ? 3 : 2}
+                strokeDasharray={isCompleted || isActive ? 'none' : '8 4'}
+                strokeLinecap="round" />
+            );
+          })}
+
+          {/* Completed portion of active leg */}
+          <line x1={legFrom.x} y1={legFrom.y} x2={vx} y2={vy}
+            stroke={C.success} strokeWidth="4" strokeLinecap="round" />
+
+          {/* Waypoint dots */}
+          {WAYPOINTS.map((wp, i) => {
+            const isStart = i === 0;
+            const isEnd   = i === WAYPOINTS.length - 1;
+            const isPassed = i <= activeMapLeg.from;
+            return (
+              <g key={`wp${i}`}>
+                <circle cx={wp.x} cy={wp.y} r={isStart || isEnd ? 8 : 6}
+                  fill={isPassed ? C.success : isEnd ? C.accent : 'white'}
+                  stroke={isPassed ? C.success : wp.color} strokeWidth="2.5" />
+                {(isStart || isEnd) && (
+                  <circle cx={wp.x} cy={wp.y} r="14" fill="none"
+                    stroke={isStart ? C.success : C.accent} strokeWidth="2" opacity="0.3" />
+                )}
+                <text x={wp.x} y={wp.y - 14} textAnchor="middle" fontSize="8" fontWeight="bold"
+                  fill={C.text}>{wp.label}</text>
+              </g>
+            );
+          })}
+
+          {/* Vehicle marker */}
+          <circle cx={vx} cy={vy} r="12" fill={C.success} />
+          <circle cx={vx} cy={vy} r="20" fill="none" stroke={C.success} strokeWidth="2.5" opacity="0.4" className="pulse-dot" />
+          <circle cx={vx} cy={vy} r="5" fill="white" />
         </svg>
-        {/* Labels */}
-        <div className="absolute" style={{ bottom: 16, left: 72 }}>
-          <div className="bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 shadow-sm">
-            <p className="text-xs font-bold" style={{ color: C.primary }}>Berlin Hbf</p>
-            <p className="text-xs" style={{ color: C.muted }}>Dept 07:00</p>
-          </div>
-        </div>
       </div>
 
-      {/* Info card */}
-      <div className="mx-4 mt-3 bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ background: C.success, animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-            <span className="text-sm font-bold" style={{ color: C.text }}>ICE 573 — Live</span>
+      {/* Journey progress timeline */}
+      <div className="mx-4 mt-3 overflow-y-auto scrollable" style={{ maxHeight: 220 }}>
+        {/* Active leg info card */}
+        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: C.success, animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
+              <span className="text-sm font-bold" style={{ color: C.text }}>EC 89 — Live tracking</span>
+            </div>
+            <OperatorBadge opId="db" />
           </div>
-          <OperatorBadge opId="db" />
-        </div>
-        <div className="flex gap-4 flex-wrap">
-          <div>
-            <p className="text-xs" style={{ color: C.muted }}>Next stop</p>
-            <p className="text-sm font-semibold" style={{ color: C.text }}>Hannover Hbf</p>
-            <p className="text-xs" style={{ color: C.muted }}>in ~22 min</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: C.muted }}>Arrival</p>
-            <p className="text-sm font-semibold" style={{ color: C.text }}>Frankfurt Hbf</p>
-            <p className="text-xs font-semibold" style={{ color: C.warning }}>~11:12 (+12 min)</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-xs" style={{ color: C.muted }}>Progress</p>
-            <p className="text-xl font-bold" style={{ color: C.primary }}>{Math.round(progress)}%</p>
-            <div className="w-16 h-2 rounded-full mt-1" style={{ background: C.border }}>
-              <div className="h-full rounded-full transition-all duration-500" style={{ background: C.success, width: `${progress}%` }} />
+          <div className="flex gap-4 flex-wrap">
+            <div>
+              <p className="text-xs" style={{ color: C.muted }}>Next stop</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>Kufstein</p>
+              <p className="text-xs" style={{ color: C.muted }}>in ~18 min</p>
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: C.muted }}>Leg arrival</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>Verona PN</p>
+              <p className="text-xs font-semibold" style={{ color: C.warning }}>~12:49 (+8 min)</p>
+            </div>
+            <div className="ml-auto text-right">
+              <p className="text-xs" style={{ color: C.muted }}>Overall</p>
+              <p className="text-xl font-bold" style={{ color: C.primary }}>{Math.round(progress)}%</p>
+              <div className="w-16 h-2 rounded-full mt-1" style={{ background: C.border }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ background: C.success, width: `${progress}%` }} />
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* Leg-by-leg status timeline */}
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: C.muted }}>Journey legs</p>
+          {MAP_LEGS.map((leg, i) => {
+            const op = OPERATORS[leg.op];
+            const from = WAYPOINTS[leg.from];
+            const to   = WAYPOINTS[leg.to];
+            const isCompleted = leg.status === 'completed';
+            const isActive    = leg.status === 'active';
+            return (
+              <div key={i} className="flex items-start gap-3 pb-3 last:pb-0">
+                <div className="flex flex-col items-center">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: isCompleted ? C.success : isActive ? op.color : C.border }}>
+                    {isCompleted ? <Check size={13} color="white" /> : <VehicleIcon type={leg.op === 'flix' ? 'bus' : (leg.op === 'mvg' || leg.op === 'atm') ? 'metro' : 'rail'} size={12} />}
+                  </div>
+                  {i < MAP_LEGS.length - 1 && <div className="w-0.5 h-6 mt-1" style={{ background: isCompleted ? C.success : C.border }} />}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold" style={{ color: C.text }}>{from.label} → {to.label}</span>
+                    {isCompleted && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.success + '15', color: C.success }}>Done</span>}
+                    {isActive && (
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.primary + '15', color: C.primary }}>
+                        In transit
+                      </span>
+                    )}
+                    {leg.delay > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.warning + '15', color: C.warning }}>
+                        +{leg.delay}m
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <OperatorBadge opId={leg.op} />
+                    <span className="text-xs" style={{ color: C.muted }}>{leg.vehicle}</span>
+                    {leg.status === 'upcoming' && <span className="text-xs" style={{ color: C.muted }}>· Scheduled</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1140,7 +1343,6 @@ function BottomNav({ screen, dispatch, ticketCount }) {
 // ─── REDUCER ──────────────────────────────────────────────────────────────────
 const initialState = {
   screen: 'home',
-  mode: 'intercity',
   searchFrom: '',
   searchTo: '',
   selectedRoute: null,
@@ -1153,7 +1355,6 @@ const initialState = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET_MODE':   return { ...state, mode: action.mode };
     case 'GOTO':       return { ...state, screen: action.screen };
     case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to };
     case 'SELECT_ROUTE': return { ...state, screen:'detail', selectedRoute: action.route };

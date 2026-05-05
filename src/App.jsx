@@ -1,12 +1,13 @@
-import { useState, useEffect, useReducer } from 'react';
+import { useState, useEffect, useReducer, useRef } from 'react';
 import { LANGUAGES, LanguageContext, useTranslation } from './i18n';
+import { searchLocations, searchRoutes } from './api';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   Train, Bus, MapPin, Clock, CreditCard, Search, Home, Ticket,
   User, Map, AlertTriangle, ChevronRight, ArrowRight,
   Check, Plus, Minus, X, ChevronDown, ChevronUp, Navigation,
-  Shuffle, RotateCcw, Calendar,
+  Shuffle, Calendar,
 } from 'lucide-react';
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ const OPERATORS = {
   mvg:   { id: 'mvg',   name: 'MVG',        fullName: 'MVG München',    color: '#0B6E4F', type: 'metro' },
   obb:   { id: 'obb',   name: 'ÖBB',        fullName: 'ÖBB Austria',    color: '#E2001A', type: 'rail'  },
   ns:    { id: 'ns',    name: 'NS',         fullName: 'NS Dutch Railways', color: '#FFD700', type: 'rail' },
+  ctt:   { id: 'ctt',  name: 'CTT',        fullName: 'CTT Nord Pisa',     color: '#FF6B00', type: 'bus'  },
 };
 
 const CITIES = [
@@ -52,6 +54,7 @@ const CITIES = [
   { id: 'rome',      name: 'Rome',      country: 'IT', emoji: '🇮🇹', transitPass: { name: 'ATAC Day Pass',         price: 4.00, op: 'trit' } },
   { id: 'lyon',      name: 'Lyon',      country: 'FR', emoji: '🇫🇷', transitPass: { name: 'TCL Day Pass',          price: 3.00, op: 'sncf' } },
   { id: 'munich',    name: 'Munich',    country: 'DE', emoji: '🇩🇪', transitPass: { name: 'MVG Day Pass',          price: 8.60, op: 'mvg'  } },
+  { id: 'pisa',      name: 'Pisa',      country: 'IT', emoji: '🇮🇹', transitPass: { name: 'CTT Nord Biglietto',    price: 1.50, op: 'ctt'  } },
 ];
 
 // ─── LOCATIONS (for door-to-door address search) ──────────────────────────────
@@ -77,6 +80,16 @@ const LOCATIONS = [
   { id: 'l19', label: 'Grand Place 1, Brussels',            short: 'Grand Place 1',        city: 'brussels',   type: 'address',  emoji: '📍' },
   { id: 'l20', label: 'Brussels Midi / Zuid',               short: 'Brussels Midi',        city: 'brussels',   type: 'station',  emoji: '🚉' },
   { id: 'l21', label: 'Prague Florenc (Bus Station)',        short: 'Prague Florenc',       city: 'prague',     type: 'station',  emoji: '🚌' },
+
+  // ── Munich ──
+  { id: 'l_muc', label: 'Munich Airport (MUC)',                short: 'Munich Airport',       city: 'munich', type: 'airport',    emoji: '✈️', lat: 48.3538, lon: 11.7861 },
+
+  // ── Pisa ────
+  { id: 'l_psa',      label: 'Pisa Galileo Galilei Airport (PSA)', short: 'Pisa Airport',    city: 'pisa',   type: 'airport',    emoji: '✈️', lat: 43.6839, lon: 10.3927 },
+  { id: 'l_pisa_c',   label: 'Pisa Centrale',                      short: 'Pisa Centrale',   city: 'pisa',   type: 'station',    emoji: '🚉', lat: 43.7086, lon: 10.3980 },
+  { id: 'l_torre',    label: 'Torre Pendente di Pisa',              short: 'Torre Pendente',  city: 'pisa',   type: 'attraction', emoji: '🗼', lat: 43.7230, lon: 10.3966 },
+  { id: 'l_miracoli', label: 'Piazza dei Miracoli, Pisa',           short: 'Piazza Miracoli', city: 'pisa',   type: 'attraction', emoji: '🏛️', lat: 43.7229, lon: 10.3964 },
+  { id: 'l_pisa_r',   label: 'Pisa, Via Roma',                      short: 'Via Roma, Pisa',  city: 'pisa',   type: 'address',    emoji: '📍', lat: 43.7151, lon: 10.4013 },
 ];
 
 const getCityById  = (id)   => CITIES.find(c => c.id === id);
@@ -231,7 +244,40 @@ const generateReverseRoutes = (routes) => routes.map(route => ({
   })),
 }));
 
-const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES)];
+// ─── PISA IN-CITY ROUTES (Airport → Torre Pendente) ──────────────────────────
+// Added separately to avoid time-flip artifacts from generateReverseRoutes
+const PISA_ROUTES = [
+  { id:'rp1', origin:'pisa', destination:'pisa', label:'Recommended',
+    legs:[
+      { operator:'ctt',  vehicle:'PisaMover',  type:'rail', from:'Pisa Airport',    to:'Pisa Centrale',      dep:'10:00', arr:'10:05', dur:5,  platform:'Terminal' },
+      { operator:'ctt',  vehicle:'LAM Rossa',  type:'bus',  from:'Pisa Centrale',   to:'Piazza dei Miracoli',dep:'10:15', arr:'10:30', dur:15, platform:'P.za V. Emanuele' },
+    ], totalDur:30, totalPrice:2.70, transfers:1 },
+
+  { id:'rp2', origin:'pisa', destination:'pisa', label:'Via Trenitalia',
+    legs:[
+      { operator:'trit', vehicle:'R 22716',    type:'rail', from:'Pisa Aeroporto',  to:'Pisa Centrale',      dep:'09:36', arr:'09:42', dur:6,  platform:'1' },
+      { operator:'ctt',  vehicle:'LAM Rossa',  type:'bus',  from:'Pisa Centrale',   to:'Piazza dei Miracoli',dep:'09:52', arr:'10:07', dur:15, platform:'P.za V. Emanuele' },
+    ], totalDur:31, totalPrice:3.20, transfers:1 },
+
+  { id:'rp3', origin:'pisa', destination:'pisa', label:'Direct Shuttle',
+    legs:[
+      { operator:'ctt',  vehicle:'Navetta Aeroporto', type:'bus', from:'Pisa Airport', to:'Piazza dei Miracoli', dep:'10:30', arr:'10:50', dur:20, platform:'Uscita Arrivi' },
+    ], totalDur:20, totalPrice:2.70, transfers:0 },
+
+  // Reverse: Torre Pendente → Airport
+  { id:'rp1r', origin:'pisa', destination:'pisa', label:'Recommended',
+    legs:[
+      { operator:'ctt',  vehicle:'LAM Rossa',  type:'bus',  from:'Piazza dei Miracoli', to:'Pisa Centrale',  dep:'14:00', arr:'14:15', dur:15, platform:'Piazza Miracoli' },
+      { operator:'ctt',  vehicle:'PisaMover',  type:'rail', from:'Pisa Centrale',        to:'Pisa Airport',   dep:'14:25', arr:'14:30', dur:5,  platform:'Staz. Pisa C.' },
+    ], totalDur:30, totalPrice:2.70, transfers:1 },
+
+  { id:'rp3r', origin:'pisa', destination:'pisa', label:'Direct Shuttle',
+    legs:[
+      { operator:'ctt',  vehicle:'Navetta Aeroporto', type:'bus', from:'Piazza dei Miracoli', to:'Pisa Airport', dep:'13:40', arr:'14:00', dur:20, platform:'Piazza Miracoli' },
+    ], totalDur:20, totalPrice:2.70, transfers:0 },
+];
+
+const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES];
 
 const INSPIRATION = [
   { id:'i1', title:'Weekend in Prague',  subtitle:'Direct from Berlin',   from:'berlin',    to:'prague',   price:19,  dur:'4h 30m', gradient:'linear-gradient(135deg,#003D7E 0%,#6B7280 100%)' },
@@ -338,53 +384,161 @@ const MockQR = ({ value }) => {
 
 // ─── SCREEN: HOME ─────────────────────────────────────────────────────────────
 const getDefaultDate = () => new Date().toISOString().slice(0, 10);
-const getDefaultTime = () => new Date().toTimeString().slice(0, 5);
-const getDefaultReturnDate = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 3);
-  return d.toISOString().slice(0, 10);
-};
 
 function HomeScreen({ appState, dispatch }) {
   const { t } = useTranslation();
+
+  // ── text values shown in the inputs ──────────────────────────────────────
   const [fromVal,       setFromVal]       = useState('');
   const [toVal,         setToVal]         = useState('');
+  // ── lat/lon stored when user picks a live-API suggestion ─────────────────
+  const [fromCoords,    setFromCoords]    = useState(null); // [lat, lon] | null
+  const [toCoords,      setToCoords]      = useState(null);
+  // ── dropdown suggestion lists ─────────────────────────────────────────────
   const [fromSug,       setFromSug]       = useState([]);
   const [toSug,         setToSug]         = useState([]);
-  const [dateVal,       setDateVal]       = useState(getDefaultDate);
-  const [timeVal,       setTimeVal]       = useState(getDefaultTime);
-  const [tripType,      setTripType]      = useState('oneway');
-  const [returnDateVal, setReturnDateVal] = useState(getDefaultReturnDate);
+  // ── date ─────────────────────────────────────────────────────────────────
+  const [dateVal, setDateVal] = useState(getDefaultDate);
 
-  const suggest = val => {
+  // Refs track the "current" query so stale API responses are ignored
+  const fromQueryRef = useRef('');
+  const toQueryRef   = useRef('');
+
+  // ── LOCAL fallback: CITIES + LOCATIONS ───────────────────────────────────
+  const localSuggest = (val) => {
     if (val.length < 1) return [];
     const v = val.toLowerCase();
-    const cities = CITIES.filter(c => c.name.toLowerCase().startsWith(v)).map(c => ({ id: c.id, label: c.name, sub: c.country, emoji: c.emoji, cityName: c.name }));
-    const locs = LOCATIONS.filter(l => l.label.toLowerCase().includes(v)).map(l => ({ id: l.id, label: l.label, sub: l.type, emoji: l.emoji, cityName: getCityById(l.city)?.name || l.city }));
+    const cities = CITIES
+      .filter(c => c.name.toLowerCase().startsWith(v))
+      .map(c => ({
+        id: c.id, label: c.name, sub: c.country,
+        emoji: c.emoji, cityName: c.name,
+        lat: null, lon: null, isLive: false,
+      }));
+    const locs = LOCATIONS
+      .filter(l => l.label.toLowerCase().includes(v))
+      .map(l => ({
+        id: l.id, label: l.label, sub: l.type,
+        emoji: l.emoji, cityName: getCityById(l.city)?.name || l.city,
+        lat: l.lat ?? null, lon: l.lon ?? null, isLive: false,
+      }));
     return [...locs, ...cities].slice(0, 6);
   };
 
+  // ── Normalise a Nominatim result into our suggestion shape ────────────────
+  const normaliseApiResult = (item, i) => ({
+    id:       item.id ?? `api-${i}`,
+    label:    item.short || item.label,   // concise display text
+    sub:      item.type  || item.country,
+    emoji:    item.emoji,
+    cityName: item.city  || item.short || '',
+    lat:      item.lat,
+    lon:      item.lon,
+    isLive:   true,
+  });
+
+  // ── Async handler: show local results instantly, then API results ──────────
+  const fetchSuggestions = async (val, queryRef, setSug) => {
+    queryRef.current = val;
+
+    if (val.length < 2) { setSug([]); return; }
+
+    // Instant local feedback — keep reference for later merge
+    const local = localSuggest(val);
+    setSug(local);
+
+    // Fire debounced Nominatim call (300 ms debounce is inside api.js)
+    const { data } = await searchLocations(val);
+
+    // Discard result if user has typed something different
+    if (queryRef.current !== val) return;
+
+    if (data.length > 0) {
+      const apiResults = data.map(normaliseApiResult);
+      // Local results stay at top; append only API results not already present
+      const localLabels = new Set(local.map(s => s.label.toLowerCase()));
+      const freshApi = apiResults.filter(s => !localLabels.has(s.label.toLowerCase()));
+      setSug([...local, ...freshApi].slice(0, 8));
+    }
+    // else: keep the local results already shown
+  };
+
+  // ── City name resolver (for mock ROUTES matching) ─────────────────────────
+  // Maps common non-English city names to our English CITIES names
+  const CITY_ALIAS = {
+    münchen: 'Munich', muenchen: 'Munich',
+    milano: 'Milan',
+    bruxelles: 'Brussels', brussel: 'Brussels', brüssel: 'Brussels',
+    prag: 'Prague', praga: 'Prague', praha: 'Prague',
+    roma: 'Rome',
+    lyon: 'Lyon',
+    paris: 'Paris',
+    amsterdam: 'Amsterdam',
+    berlin: 'Berlin',
+  };
+
   const resolveCityName = (val) => {
-    // Check if it's a location label, extract city name for route matching
+    if (!val) return val;
+    // 1. Exact LOCATIONS label match
     const loc = LOCATIONS.find(l => l.label.toLowerCase() === val.toLowerCase());
     if (loc) return getCityById(loc.city)?.name || val;
-    // Check if it's already a city name
+    // 2. Exact CITIES name match
     const city = getCityByName(val);
     if (city) return city.name;
+    // 3. Scan each comma-separated token for city name or alias
+    const tokens = val.split(',').map(t => t.trim()).filter(Boolean);
+    for (const tok of tokens) {
+      const c = getCityByName(tok);
+      if (c) return c.name;
+      // Also check the first word of the token (e.g. "München Hbf" → "München")
+      for (const word of tok.split(/\s+/)) {
+        const alias = CITY_ALIAS[word.toLowerCase()];
+        if (alias) return alias;
+      }
+    }
     return val;
   };
 
   const doSearch = (from, to) => {
     if (!from || !to) return;
     dispatch({
-      type: 'SEARCH',
-      from: resolveCityName(from),
-      to: resolveCityName(to),
-      date: `${dateVal}T${timeVal}`,
-      tripType,
-      returnDate: tripType === 'roundtrip' ? returnDateVal : '',
+      type:       'SEARCH',
+      from:       resolveCityName(from),
+      to:         resolveCityName(to),
+      fromCoords: fromCoords ?? null,
+      toCoords:   toCoords   ?? null,
+      date:       dateVal,
     });
   };
+
+  // ── Shared dropdown renderer ──────────────────────────────────────────────
+  const SuggestionList = ({ sugs, onPick, zIndex }) =>
+    sugs.length === 0 ? null : (
+      <div
+        className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border overflow-hidden"
+        style={{ borderColor: C.border, zIndex }}
+      >
+        {sugs.map(s => (
+          <button
+            key={s.id}
+            className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-gray-50"
+            onClick={() => onPick(s)}
+          >
+            <span>{s.emoji}</span>
+            <span className="flex-1 truncate" style={{ color: C.text }}>{s.label}</span>
+            {/* Source indicator */}
+            <span
+              className="text-xs font-medium flex-shrink-0 px-1.5 py-0.5 rounded-full"
+              style={s.isLive
+                ? { background: C.primary + '12', color: C.primary }
+                : { background: C.border,          color: C.muted   }}
+            >
+              {s.isLive ? '📡 Live' : '📍 Local'}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
 
   return (
     <div className="flex flex-col flex-1 pb-20 fade-in">
@@ -403,35 +557,51 @@ function HomeScreen({ appState, dispatch }) {
 
         {/* Search card */}
         <div className="bg-white rounded-2xl p-3 space-y-2 shadow-lg relative" style={{ zIndex: 10 }}>
+
           {/* From */}
           <div className="relative" style={{ zIndex: 20 }}>
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
               <div className="w-2 h-2 rounded-full border-2 flex-shrink-0" style={{ borderColor: C.primary }} />
-              <input className="flex-1 text-sm outline-none bg-transparent" style={{ color: C.text }}
+              <input
+                className="flex-1 text-sm outline-none bg-transparent"
+                style={{ color: C.text }}
                 placeholder={t('from_placeholder')}
                 value={fromVal}
-                onChange={e => { setFromVal(e.target.value); setFromSug(suggest(e.target.value)); }} />
-              {fromVal && <button onClick={() => { setFromVal(''); setFromSug([]); }}><X size={14} color={C.muted} /></button>}
+                onChange={e => {
+                  setFromVal(e.target.value);
+                  setFromCoords(null);
+                  fetchSuggestions(e.target.value, fromQueryRef, setFromSug);
+                }}
+              />
+              {fromVal && (
+                <button onClick={() => { setFromVal(''); setFromCoords(null); setFromSug([]); }}>
+                  <X size={14} color={C.muted} />
+                </button>
+              )}
             </div>
-            {fromSug.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border overflow-hidden" style={{ borderColor: C.border, zIndex: 30 }}>
-                {fromSug.map(s => (
-                  <button key={s.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
-                    onClick={() => { setFromVal(s.label); setFromSug([]); }}>
-                    <span>{s.emoji}</span><span style={{ color: C.text }}>{s.label}</span>
-                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{s.sub}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <SuggestionList
+              sugs={fromSug}
+              zIndex={30}
+              onPick={s => {
+                setFromVal(s.label);
+                setFromCoords(s.lat != null ? [s.lat, s.lon] : null);
+                setFromSug([]);
+              }}
+            />
           </div>
 
-          {/* Swap */}
+          {/* Swap — swaps both text and coords */}
           <div className="flex items-center gap-2 px-3">
             <div className="flex-1 h-px" style={{ background: C.border }} />
-            <button onClick={() => { const t = fromVal; setFromVal(toVal); setToVal(t); }}
+            <button
               className="w-7 h-7 rounded-full flex items-center justify-center shadow"
-              style={{ background: C.primary }}>
+              style={{ background: C.primary }}
+              onClick={() => {
+                setFromVal(toVal);   setToVal(fromVal);
+                setFromCoords(toCoords); setToCoords(fromCoords);
+                setFromSug([]);      setToSug([]);
+              }}
+            >
               <Shuffle size={12} color="white" />
             </button>
             <div className="flex-1 h-px" style={{ background: C.border }} />
@@ -441,75 +611,41 @@ function HomeScreen({ appState, dispatch }) {
           <div className="relative" style={{ zIndex: 19 }}>
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
               <MapPin size={14} color={C.accent} className="flex-shrink-0" />
-              <input className="flex-1 text-sm outline-none bg-transparent" style={{ color: C.text }}
-                placeholder={t('to_placeholder')}
-                value={toVal}
-                onChange={e => { setToVal(e.target.value); setToSug(suggest(e.target.value)); }} />
-              {toVal && <button onClick={() => { setToVal(''); setToSug([]); }}><X size={14} color={C.muted} /></button>}
-            </div>
-            {toSug.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border overflow-hidden" style={{ borderColor: C.border, zIndex: 29 }}>
-                {toSug.map(s => (
-                  <button key={s.id} className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2"
-                    onClick={() => { setToVal(s.label); setToSug([]); }}>
-                    <span>{s.emoji}</span><span style={{ color: C.text }}>{s.label}</span>
-                    <span className="text-xs ml-auto" style={{ color: C.muted }}>{s.sub}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* One-way / Round trip toggle */}
-          <div className="flex rounded-xl overflow-hidden" style={{ background: C.bg }}>
-            {[['oneway', t('one_way')], ['roundtrip', t('round_trip')]].map(([val, label]) => (
-              <button key={val} onClick={() => setTripType(val)}
-                className="flex-1 py-2 text-xs font-semibold transition-all"
-                style={tripType === val
-                  ? { background: C.primary, color: 'white' }
-                  : { color: C.muted }}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Outbound Date & Time */}
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
-            <Calendar size={14} color={C.primary} className="flex-shrink-0" />
-            <span className="text-xs font-medium flex-shrink-0" style={{ color: C.muted }}>
-              {tripType === 'roundtrip' ? t('out_label') : ''}
-            </span>
-            <input
-              type="date"
-              className="flex-1 text-sm outline-none bg-transparent"
-              style={{ color: C.text }}
-              value={dateVal}
-              onChange={e => setDateVal(e.target.value)}
-            />
-            <input
-              type="time"
-              className="text-sm outline-none bg-transparent"
-              style={{ color: C.text }}
-              value={timeVal}
-              onChange={e => setTimeVal(e.target.value)}
-            />
-          </div>
-
-          {/* Return Date (Round trip only) */}
-          {tripType === 'roundtrip' && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
-              <Calendar size={14} color={C.accent} className="flex-shrink-0" />
-              <span className="text-xs font-medium flex-shrink-0" style={{ color: C.muted }}>{t('ret_label')}</span>
               <input
-                type="date"
                 className="flex-1 text-sm outline-none bg-transparent"
                 style={{ color: C.text }}
-                value={returnDateVal}
-                min={dateVal}
-                onChange={e => setReturnDateVal(e.target.value)}
+                placeholder={t('to_placeholder')}
+                value={toVal}
+                onChange={e => {
+                  setToVal(e.target.value);
+                  setToCoords(null);
+                  fetchSuggestions(e.target.value, toQueryRef, setToSug);
+                }}
               />
+              {toVal && (
+                <button onClick={() => { setToVal(''); setToCoords(null); setToSug([]); }}>
+                  <X size={14} color={C.muted} />
+                </button>
+              )}
             </div>
-          )}
+            <SuggestionList
+              sugs={toSug}
+              zIndex={29}
+              onPick={s => {
+                setToVal(s.label);
+                setToCoords(s.lat != null ? [s.lat, s.lon] : null);
+                setToSug([]);
+              }}
+            />
+          </div>
+
+          {/* Date */}
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.bg }}>
+            <Calendar size={14} color={C.primary} className="flex-shrink-0" />
+            <input type="date" className="flex-1 text-sm outline-none bg-transparent"
+              style={{ color: C.text }} value={dateVal}
+              onChange={e => setDateVal(e.target.value)} />
+          </div>
 
           <button onClick={() => doSearch(fromVal, toVal)}
             className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm transition-all"
@@ -519,60 +655,6 @@ function HomeScreen({ appState, dispatch }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollable px-4 pt-5 space-y-5">
-        {/* Inspiration */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-base" style={{ color: C.text }}>{t('trip_ideas')}</h2>
-            <span className="text-xs font-medium" style={{ color: C.accent }}>{t('see_all')}</span>
-          </div>
-          <div className="flex gap-3 scroll-x -mx-4 px-4 pb-1">
-            {INSPIRATION.map(card => (
-              <button key={card.id} onClick={() => dispatch({ type:'SEARCH', from: getCityById(card.from)?.name, to: getCityById(card.to)?.name })}
-                className="flex-shrink-0 w-44 rounded-2xl overflow-hidden shadow text-left">
-                <div className="h-24 flex items-end p-3" style={{ background: card.gradient }}>
-                  <div>
-                    <p className="text-white font-bold text-sm leading-tight">{card.title}</p>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{card.subtitle}</p>
-                  </div>
-                </div>
-                <div className="bg-white px-3 py-2.5 flex items-center justify-between">
-                  <span className="text-xs font-semibold" style={{ color: C.primary }}>from €{card.price}</span>
-                  <span className="text-xs" style={{ color: C.muted }}>{card.dur}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent trips */}
-        <div>
-          <h2 className="font-bold text-base mb-3" style={{ color: C.text }}>{t('recent_trips')}</h2>
-          {[
-            { from:'Paris',     to:'Lyon',     date:'Mar 10', price:'€39' },
-            { from:'Amsterdam', to:'Brussels', date:'Mar 5',  price:'€49' },
-          ].map((trip, i) => (
-            <div key={i} className="bg-white rounded-2xl px-4 py-3 mb-2 flex items-center justify-between"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: C.primary + '15' }}>
-                  <Train size={14} color={C.primary} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: C.text }}>{trip.from} → {trip.to}</p>
-                  <p className="text-xs" style={{ color: C.muted }}>{trip.date} · {trip.price}</p>
-                </div>
-              </div>
-              <button onClick={() => dispatch({ type:'SEARCH', from: trip.from, to: trip.to })}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: C.primary + '10', color: C.primary }}>
-                <RotateCcw size={11} /> {t('rebook')}
-              </button>
-            </div>
-          ))}
-        </div>
-        <div style={{ height: 8 }} />
-      </div>
     </div>
   );
 }
@@ -580,35 +662,155 @@ function HomeScreen({ appState, dispatch }) {
 // ─── SCREEN: SEARCH RESULTS ───────────────────────────────────────────────────
 const formatSearchDate = (searchDate, t) => {
   if (!searchDate) return t('today');
-  const [datePart, timePart] = searchDate.split('T');
-  const d = new Date(datePart + 'T00:00:00');
+  const d = new Date(searchDate + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isToday = d.getTime() === today.getTime();
-  const dateLabel = isToday
+  return d.getTime() === today.getTime()
     ? t('today')
     : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return timePart ? `${dateLabel} · ${timePart}` : dateLabel;
 };
 
 function ResultsScreen({ appState, dispatch }) {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState('fastest');
-  const [expanded, setExpanded] = useState(null);
-  const { searchFrom, searchTo, searchDate, tripType, returnDate } = appState;
+  const [filter, setFilter]       = useState('fastest');
+  const [expanded, setExpanded]   = useState(null);
+  const [liveRoutes, setLiveRoutes] = useState([]);
+  const [loading, setLoading]     = useState(false);
 
-  const fromCity = getCityByName(searchFrom);
-  const toCity   = getCityByName(searchTo);
-  const allRoutes = ROUTES.filter(r => r.origin === fromCity?.id && r.destination === toCity?.id);
+  const { searchFrom, searchTo, searchDate, fromCoords, toCoords } = appState;
 
-  const sorted = [...allRoutes].sort((a, b) => {
-    if (filter === 'fastest')  return a.totalDur   - b.totalDur;
-    if (filter === 'cheapest') return a.totalPrice - b.totalPrice;
+  // ── Live API fetch ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!fromCoords || !toCoords) return;
+    let cancelled = false;
+    setLoading(true);
+    setLiveRoutes([]);
+    const date = searchDate || new Date().toISOString().slice(0, 10);
+    searchRoutes(fromCoords[0], fromCoords[1], toCoords[0], toCoords[1], date, '08:00')
+      .then(({ data }) => { if (!cancelled && data.length > 0) setLiveRoutes(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fromCoords, toCoords, searchDate]);
+
+  // ── Mock routes (always available) ───────────────────────────────────────
+  const fromCity   = getCityByName(searchFrom);
+  const toCity     = getCityByName(searchTo);
+  const mockRoutes = ROUTES.filter(r => r.origin === fromCity?.id && r.destination === toCity?.id);
+
+  // ── Sort (cheapest puts null prices last) ────────────────────────────────
+  const sortFn = (a, b) => {
+    if (filter === 'fastest')  return a.totalDur - b.totalDur;
+    if (filter === 'cheapest') return (a.totalPrice ?? Infinity) - (b.totalPrice ?? Infinity);
     return a.transfers - b.transfers;
-  });
+  };
+  const sortedLive = [...liveRoutes].sort(sortFn);
+  const sortedMock = [...mockRoutes].sort(sortFn);
+  const totalCount = sortedLive.length + sortedMock.length;
+
+  // ── Shared route card renderer ────────────────────────────────────────────
+  const renderRouteCard = (route, i) => {
+    const isExp = expanded === route.id;
+    const first = route.legs[0];
+    const last  = route.legs[route.legs.length - 1];
+    return (
+      <div key={route.id} className="bg-white rounded-2xl overflow-hidden fade-in"
+        style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)', animationDelay:`${i*0.05}s` }}>
+        <button className="w-full text-left p-4" onClick={() => setExpanded(isExp ? null : route.id)}>
+          {/* Times + Price */}
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <span className="text-lg font-bold" style={{ color: C.text }}>{first.dep}</span>
+              <span className="text-sm mx-2" style={{ color: C.muted }}>→</span>
+              <span className="text-lg font-bold" style={{ color: C.text }}>{last.arr}</span>
+            </div>
+            {route.totalPrice != null
+              ? <span className="text-lg font-bold" style={{ color: C.accent }}>€{route.totalPrice}</span>
+              : <span className="text-sm font-medium" style={{ color: C.muted }}>Price TBD</span>
+            }
+          </div>
+          {/* Journey bar */}
+          <JourneyBar legs={route.legs} totalDur={route.totalDur} />
+          {/* Meta */}
+          <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+            <div className="flex items-center gap-1">
+              <Clock size={12} color={C.muted} />
+              <span className="text-xs" style={{ color: C.muted }}>{fmtDur(route.totalDur)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Shuffle size={12} color={C.muted} />
+              <span className="text-xs" style={{ color: C.muted }}>{route.transfers === 0 ? t('direct') : `${route.transfers} ${t('transfer_label')}`}</span>
+            </div>
+            {route.legs.map((l, j) => <OperatorBadge key={j} opId={l.operator} />)}
+            {route.label && (
+              <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: C.accent + '20', color: C.accent }}>{route.label}</span>
+            )}
+          </div>
+        </button>
+
+        {/* Expanded legs */}
+        {isExp && (
+          <div className="border-t px-4 pb-3" style={{ borderColor: C.border }}>
+            {route.legs.map((leg, j) => {
+              const op = OPERATORS[leg.operator];
+              return (
+                <div key={j}>
+                  <div className="flex items-start gap-3 py-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: (op?.color || C.muted) + '20' }}>
+                      <VehicleIcon type={leg.type} size={13} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-bold" style={{ color: C.text }}>{leg.from}</span>
+                        <ArrowRight size={11} color={C.muted} />
+                        <span className="text-xs font-bold" style={{ color: C.text }}>{leg.to}</span>
+                      </div>
+                      <p className="text-xs" style={{ color: C.muted }}>
+                        {op?.fullName || leg.agencyName || leg.vehicle}
+                        {op && leg.vehicle ? ` · ${leg.vehicle}` : ''}
+                        {leg.platform ? ` · Plat. ${leg.platform}` : ''}
+                      </p>
+                      <p className="text-xs" style={{ color: C.muted }}>{leg.dep}–{leg.arr} · {fmtDur(leg.dur)}</p>
+                    </div>
+                    <OperatorBadge opId={leg.operator} />
+                  </div>
+                  {j < route.legs.length - 1 && (
+                    <div className="flex items-center gap-2 ml-10 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: C.muted }} />
+                      <span className="text-xs" style={{ color: C.muted }}>
+                        {transferMins(route.legs[j], route.legs[j+1])} {t('min_transfer_at')} {leg.to}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
+              className="w-full mt-2 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white"
+              style={{ background: C.primary }}>
+              {t('see_journey_details')} <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
+        {!isExp && (
+          <div className="border-t" style={{ borderColor: C.border }}>
+            <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
+              className="w-full py-3 text-sm font-semibold flex items-center justify-center gap-1"
+              style={{ color: C.primary }}>
+              {t('view_details')} <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col flex-1 pb-20 fade-in">
+      {/* Header */}
       <div style={{ background: C.primary }} className="px-5 pt-10 pb-4 rounded-b-3xl">
         <button onClick={() => dispatch({ type:'GOTO', screen:'home' })}
           className="flex items-center gap-1 text-xs mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
@@ -620,9 +822,7 @@ function ResultsScreen({ appState, dispatch }) {
           <h1 className="text-white font-bold text-lg">{searchTo}</h1>
         </div>
         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          {tripType === 'roundtrip' && <span className="font-semibold" style={{ color: C.accent }}>{t('outbound')} · </span>}
-          {allRoutes.length} {t('routes')} · {formatSearchDate(searchDate, t)}
-          {tripType === 'roundtrip' && returnDate && ` · ${t('return_label')} ${formatSearchDate(returnDate, t)}`}
+          {totalCount} {t('routes')} · {formatSearchDate(searchDate, t)}
         </p>
       </div>
 
@@ -639,8 +839,47 @@ function ResultsScreen({ appState, dispatch }) {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollable px-4 space-y-3 pb-4">
-        {sorted.length === 0 && (
+      <div className="flex-1 overflow-y-auto scrollable px-4 pb-4">
+
+        {/* Loading spinner */}
+        {loading && (
+          <div className="flex items-center justify-center gap-3 py-5">
+            <div className="w-7 h-7 border-4 rounded-full animate-spin"
+              style={{ borderColor: C.border, borderTopColor: C.primary }} />
+            <span className="text-sm" style={{ color: C.muted }}>Fetching live routes…</span>
+          </div>
+        )}
+
+        {/* Live section */}
+        {sortedLive.length > 0 && (
+          <div className="mb-1">
+            <div className="flex items-center gap-2 pt-1 pb-2">
+              <span className="text-xs font-bold" style={{ color: C.error }}>🔴 Live results from Transitous</span>
+            </div>
+            <div className="space-y-3">
+              {sortedLive.map((route, i) => renderRouteCard(route, i))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider between live and mock */}
+        {sortedLive.length > 0 && sortedMock.length > 0 && (
+          <div className="flex items-center gap-2 py-3">
+            <div className="flex-1 h-px" style={{ background: C.border }} />
+            <span className="text-xs font-semibold px-2" style={{ color: C.muted }}>📋 Sample routes</span>
+            <div className="flex-1 h-px" style={{ background: C.border }} />
+          </div>
+        )}
+
+        {/* Mock section */}
+        {sortedMock.length > 0 && (
+          <div className="space-y-3">
+            {sortedMock.map((route, i) => renderRouteCard(route, i))}
+          </div>
+        )}
+
+        {/* Empty state (no live + no mock, not loading) */}
+        {!loading && totalCount === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Train size={40} color={C.muted} />
             <p className="mt-3 font-semibold" style={{ color: C.text }}>{t('no_routes_found')}</p>
@@ -652,111 +891,6 @@ function ResultsScreen({ appState, dispatch }) {
           </div>
         )}
 
-        {sorted.map((route, i) => {
-          const isExp = expanded === route.id;
-          const first = route.legs[0];
-          const last  = route.legs[route.legs.length - 1];
-          return (
-            <div key={route.id} className="bg-white rounded-2xl overflow-hidden fade-in"
-              style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)', animationDelay:`${i*0.05}s` }}>
-              <button className="w-full text-left p-4" onClick={() => setExpanded(isExp ? null : route.id)}>
-                {/* Times */}
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="text-lg font-bold" style={{ color: C.text }}>{first.dep}</span>
-                    <span className="text-sm mx-2" style={{ color: C.muted }}>→</span>
-                    <span className="text-lg font-bold" style={{ color: C.text }}>{last.arr}</span>
-                  </div>
-                  <span className="text-lg font-bold" style={{ color: C.accent }}>€{route.totalPrice}</span>
-                </div>
-                {/* Bar */}
-                <JourneyBar legs={route.legs} totalDur={route.totalDur} />
-                {/* Meta */}
-                <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} color={C.muted} />
-                    <span className="text-xs" style={{ color: C.muted }}>{fmtDur(route.totalDur)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Shuffle size={12} color={C.muted} />
-                    <span className="text-xs" style={{ color: C.muted }}>{route.transfers === 0 ? t('direct') : `${route.transfers} ${t('transfer_label')}`}</span>
-                  </div>
-                  {route.legs.map((l,j) => <OperatorBadge key={j} opId={l.operator} />)}
-                  {route.label && (
-                    <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{ background: C.accent + '20', color: C.accent }}>{route.label}</span>
-                  )}
-                </div>
-              </button>
-
-              {/* Expanded legs */}
-              {isExp && (
-                <div className="border-t px-4 pb-3" style={{ borderColor: C.border }}>
-                  {route.legs.map((leg, j) => (
-                    <div key={j}>
-                      <div className="flex items-start gap-3 py-3">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: OPERATORS[leg.operator].color + '20' }}>
-                          <VehicleIcon type={leg.type} size={13} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs font-bold" style={{ color: C.text }}>{leg.from}</span>
-                            <ArrowRight size={11} color={C.muted} />
-                            <span className="text-xs font-bold" style={{ color: C.text }}>{leg.to}</span>
-                          </div>
-                          <p className="text-xs" style={{ color: C.muted }}>{OPERATORS[leg.operator].fullName} · {leg.vehicle} · Plat. {leg.platform}</p>
-                          <p className="text-xs" style={{ color: C.muted }}>{leg.dep}–{leg.arr} · {fmtDur(leg.dur)}</p>
-                        </div>
-                        <OperatorBadge opId={leg.operator} />
-                      </div>
-                      {j < route.legs.length - 1 && (
-                        <div className="flex items-center gap-2 ml-10 mb-1">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: C.muted }} />
-                          <span className="text-xs" style={{ color: C.muted }}>
-                            {transferMins(route.legs[j], route.legs[j+1])} {t('min_transfer_at')} {leg.to}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
-                    className="w-full mt-2 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white"
-                    style={{ background: C.primary }}>
-                    {t('see_journey_details')} <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-
-              {!isExp && (
-                <div className="border-t" style={{ borderColor: C.border }}>
-                  <button onClick={() => dispatch({ type:'SELECT_ROUTE', route })}
-                    className="w-full py-3 text-sm font-semibold flex items-center justify-center gap-1"
-                    style={{ color: C.primary }}>
-                    {t('view_details')} <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Show return trips button (round trip only) */}
-        {tripType === 'roundtrip' && (
-          <button
-            onClick={() => dispatch({
-              type: 'SEARCH',
-              from: searchTo,
-              to: searchFrom,
-              date: returnDate || searchDate,
-              tripType: 'roundtrip',
-              returnDate: searchDate,
-            })}
-            className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm mb-2"
-            style={{ background: C.primary, color: 'white' }}>
-            <RotateCcw size={15} /> {t('show_return_trips')}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1540,8 +1674,8 @@ const initialState = {
   searchFrom: '',
   searchTo: '',
   searchDate: '',
-  tripType: 'oneway',
-  returnDate: '',
+  fromCoords: null,
+  toCoords: null,
   selectedRoute: null,
   checkoutStep: 1,
   checkoutPrice: 0,
@@ -1554,7 +1688,7 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'GOTO':       return { ...state, screen: action.screen };
-    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchDate: action.date || '', tripType: action.tripType || 'oneway', returnDate: action.returnDate || '' };
+    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchDate: action.date || '', fromCoords: action.fromCoords || null, toCoords: action.toCoords || null };
     case 'SELECT_ROUTE': return { ...state, screen:'detail', selectedRoute: action.route };
     case 'START_CHECKOUT': return { ...state, screen:'checkout', checkoutStep:1, checkoutPrice: action.price, checkoutAddOn: action.addOn };
     case 'NEXT_STEP':  return { ...state, checkoutStep: Math.min(4, state.checkoutStep + 1) };

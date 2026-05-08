@@ -754,7 +754,21 @@ function ResultsScreen({ appState, dispatch }) {
   // ── Mock routes (always available) ───────────────────────────────────────
   const fromCity   = getCityByName(searchFrom);
   const toCity     = getCityByName(searchTo);
-  const mockRoutes = ROUTES.filter(r => r.origin === fromCity?.id && r.destination === toCity?.id);
+  const mockRoutes = ROUTES.filter(r => {
+    if (r.origin !== fromCity?.id || r.destination !== toCity?.id) return false;
+    // For in-city routes (origin === destination) we must also check direction,
+    // otherwise both Malpensa→VC and VC→Malpensa would appear simultaneously.
+    if (r.origin === r.destination) {
+      const fromLabel = (searchFromLabel || searchFrom).toLowerCase();
+      // If the search is just the city name (no specific location), show all directions
+      if (fromLabel.trim() === (fromCity?.name || '').toLowerCase()) return true;
+      // Otherwise match the route's first-leg departure against the "from" label.
+      // Uses words longer than 3 chars to avoid false hits on short tokens like "T1".
+      const firstFromWords = r.legs[0].from.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      return firstFromWords.some(w => fromLabel.includes(w));
+    }
+    return true;
+  });
 
   // ── Sort (cheapest puts null prices last) ────────────────────────────────
   const sortFn = (a, b) => {

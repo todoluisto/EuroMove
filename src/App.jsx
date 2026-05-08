@@ -335,20 +335,27 @@ const INSPIRATION = [
 ];
 
 const INIT_TICKETS = [
-  { id:'t1', ref:'EM-2024-A1B2',
-    origin:'amsterdam', destination:'brussels',
-    date:'2026-03-22', depTime:'10:20', arrTime:'12:17',
+  { id:'t1', ref:'EM-2026-MXP1',
+    origin:'milan', destination:'milan',
+    date:'2026-05-11', depTime:'15:05', arrTime:'16:14',
     status:'upcoming',
-    route: ROUTES.find(r => r.id === 'r4'),
+    route: ROUTES.find(r => r.id === 'rmx1'),
     passengers:{ adults:1, children:0, students:0 },
-    price:49, addOn:null, purchaseDate:'2026-03-15' },
-  { id:'t2', ref:'EM-2024-C3D4',
+    price:13.90, addOn:null, purchaseDate:'2026-05-07' },
+  { id:'t2', ref:'EM-2026-M1X2',
+    origin:'munich', destination:'milan',
+    date:'2026-05-17', depTime:'06:42', arrTime:'14:57',
+    status:'upcoming',
+    route: ROUTES.find(r => r.id === 'r12'),
+    passengers:{ adults:1, children:0, students:0 },
+    price:79, addOn:null, purchaseDate:'2026-05-07' },
+  { id:'t3', ref:'EM-2026-P8L3',
     origin:'paris', destination:'lyon',
-    date:'2026-03-10', depTime:'07:04', arrTime:'09:02',
+    date:'2026-04-28', depTime:'07:04', arrTime:'09:02',
     status:'completed',
     route: ROUTES.find(r => r.id === 'r8'),
-    passengers:{ adults:2, children:0, students:0 },
-    price:78, addOn:null, purchaseDate:'2026-03-05' },
+    passengers:{ adults:1, children:0, students:0 },
+    price:39, addOn:null, purchaseDate:'2026-04-20' },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1367,167 +1374,188 @@ function WalletScreen({ appState, dispatch }) {
   );
 }
 
+// ─── MAP CONFIGURATIONS (one per tracked journey) ────────────────────────────
+const MAP_CONFIGS = {
+  mxp_pv: {
+    chipLabel: '✈️ Malpensa → Porta Venezia',
+    title:     '✈️ Malpensa → Porta Venezia',
+    alert:     { msg: 'Malpensa Express on time', detail: 'Platform 1 · Next stop: Saronno (~8 min)' },
+    activeLeg: 0,
+    initProgress: 22,
+    waypoints: [
+      { coords: [45.6227,  8.7282], label: 'Malpensa T1',     color: C.success },
+      { coords: [45.6279,  9.0379], label: 'Saronno',         color: '#007AB3' },
+      { coords: [45.4862,  9.2037], label: 'Milano Centrale', color: '#007AB3' },
+      { coords: [45.4720,  9.2100], label: 'Porta Venezia 🌸',color: C.accent  },
+    ],
+    legs: [
+      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno',  nextIn: 8  },
+      { op: 'atm',     vehicle: 'Tram 9',           from: 2, to: 3, status: 'upcoming', delay: 0 },
+    ],
+  },
+  muc_mil: {
+    chipLabel: '🇩🇪 Munich → Milan 🇮🇹',
+    title:     '🇩🇪 Munich → Milan 🇮🇹',
+    alert:     { msg: '+8 min delay on EC 89 (DB)', detail: 'Transfer at Verona still possible (21 min buffer)' },
+    activeLeg: 1,
+    initProgress: 18,
+    waypoints: [
+      { coords: [48.1391, 11.5380], label: 'Westendstr.',     color: C.success },
+      { coords: [48.1403, 11.5600], label: 'München Hbf',     color: '#0B6E4F' },
+      { coords: [47.2632, 11.4010], label: 'Innsbruck',       color: '#E2001A' },
+      { coords: [45.4289, 10.9822], label: 'Verona PN',       color: '#006940' },
+      { coords: [45.4861,  9.2043], label: 'Milano Centrale', color: '#D52B1E' },
+      { coords: [45.4500,  9.1693], label: 'Porta Genova',    color: C.accent  },
+    ],
+    legs: [
+      { op: 'mvg',  vehicle: 'U5',               from: 0, to: 1, status: 'completed', delay: 0 },
+      { op: 'db',   vehicle: 'EC 89',            from: 1, to: 3, status: 'active',    delay: 8, nextStop: 'Kufstein', nextIn: 18 },
+      { op: 'trit', vehicle: 'RV 2161',          from: 3, to: 4, status: 'upcoming',  delay: 0 },
+      { op: 'atm',  vehicle: 'M2',               from: 4, to: 5, status: 'upcoming',  delay: 0 },
+    ],
+  },
+};
+
+const getMapConfig = (ticket) => {
+  if (!ticket) return MAP_CONFIGS.mxp_pv;
+  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_pv;
+  if (ticket.origin === 'munich' && ticket.destination === 'milan') return MAP_CONFIGS.muc_mil;
+  return MAP_CONFIGS.mxp_pv;
+};
+
 // ─── SCREEN: MAP ──────────────────────────────────────────────────────────────
 function MapScreen({ appState, dispatch }) {
   const { t } = useTranslation();
-  const [progress, setProgress] = useState(18);
-  const activeLeg = 1; // 0-based, EC 89 is the active leg
 
-  // Real geo coordinates for Munich → Milan (route r12)
-  const WAYPOINTS = [
-    { coords: [48.1391, 11.5380], label: 'Westendstr.',    color: C.success  },
-    { coords: [48.1403, 11.5600], label: 'München Hbf',    color: '#0B6E4F'  },
-    { coords: [47.2632, 11.4010], label: 'Innsbruck',      color: '#E2001A'  },
-    { coords: [45.4289, 10.9822], label: 'Verona PN',      color: '#006940'  },
-    { coords: [45.4861,  9.2043], label: 'Milano Centrale',color: '#D52B1E'  },
-    { coords: [45.4500,  9.1693], label: 'Porta Genova',   color: C.accent   },
-  ];
+  // Ticket switcher
+  const upcomingTickets = appState.tickets.filter(tk => tk.status !== 'completed');
+  const [trackedId, setTrackedId] = useState(upcomingTickets[0]?.id ?? null);
+  const tracked = upcomingTickets.find(tk => tk.id === trackedId) ?? upcomingTickets[0];
+  const cfg = getMapConfig(tracked);
 
-  // The journey legs for this map (matches r12 "Fastest" route)
-  const MAP_LEGS = [
-    { op: 'mvg',  vehicle: 'U5',      from: 0, to: 1, status: 'completed', delay: 0 },
-    { op: 'db',   vehicle: 'EC 89',   from: 1, to: 3, status: 'active',    delay: 8, nextStop: 'Kufstein', nextIn: 18 },
-    { op: 'trit', vehicle: 'RV 2161', from: 3, to: 4, status: 'upcoming',  delay: 0 },
-    { op: 'atm',  vehicle: 'M2',      from: 4, to: 5, status: 'upcoming',  delay: 0 },
-  ];
-
+  // Progress animation — resets when ticket changes
+  const [progress, setProgress] = useState(cfg.initProgress);
+  useEffect(() => { setProgress(cfg.initProgress); }, [trackedId]);
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress(p => {
-        if (p >= 95) return 95;
-        return +(p + 0.15).toFixed(2);
-      });
-    }, 400);
+    const timer = setInterval(() => setProgress(p => p >= 95 ? 95 : +(p + 0.15).toFixed(2)), 400);
     return () => clearInterval(timer);
   }, []);
 
-  // Interpolate live vehicle position along the active leg using real coords
+  const { waypoints: WAYPOINTS, legs: MAP_LEGS, activeLeg, title, alert: alertCfg } = cfg;
   const activeMapLeg = MAP_LEGS[activeLeg];
-  const legPct = Math.min(1, progress / 55); // 55% overall ≈ end of EC 89 leg
+
+  // Interpolate vehicle position
+  const legPct = Math.min(1, progress / 100);
   const interpPoints = [];
   for (let i = activeMapLeg.from; i <= activeMapLeg.to; i++) interpPoints.push(WAYPOINTS[i].coords);
-  const totalSegDist = interpPoints.length - 1;
-  const segIdx = Math.min(Math.floor(legPct * totalSegDist), totalSegDist - 1);
-  const segPct = (legPct * totalSegDist) - segIdx;
+  const totalSeg = interpPoints.length - 1;
+  const segIdx   = Math.min(Math.floor(legPct * totalSeg), totalSeg - 1);
+  const segPct   = legPct * totalSeg - segIdx;
   const c1 = interpPoints[segIdx];
   const c2 = interpPoints[Math.min(segIdx + 1, interpPoints.length - 1)];
-  const vehiclePos = [
-    c1[0] + (c2[0] - c1[0]) * segPct,
-    c1[1] + (c2[1] - c1[1]) * segPct,
-  ];
+  const vehiclePos = [c1[0] + (c2[0] - c1[0]) * segPct, c1[1] + (c2[1] - c1[1]) * segPct];
 
-  // Build per-leg polylines with colour by status
   const polylines = MAP_LEGS.map(leg => ({
     pts:    Array.from({ length: leg.to - leg.from + 1 }, (_, k) => WAYPOINTS[leg.from + k].coords),
     color:  leg.status === 'completed' ? C.success : leg.status === 'active' ? C.primary : C.muted,
     dashed: leg.status === 'upcoming',
     weight: leg.status === 'active' ? 4 : 3,
-    leg,
   }));
-
-  const mapBounds = WAYPOINTS.map(w => w.coords);
+  const mapBounds  = WAYPOINTS.map(w => w.coords);
+  const isDelay    = alertCfg.msg.startsWith('+');
 
   return (
     <div className="flex flex-col flex-1 pb-20 fade-in">
       {/* Header */}
       <div style={{ background: C.primary }} className="px-5 pt-10 pb-4 rounded-b-3xl">
-        <h1 className="text-white font-bold text-lg">🇩🇪 Munich → Milan 🇮🇹</h1>
+        <h1 className="text-white font-bold text-lg">{title}</h1>
         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{t('live_nav_subtitle')}</p>
       </div>
 
-      {/* Disruption alert */}
+      {/* Ticket switcher chips */}
+      {upcomingTickets.length > 1 && (
+        <div className="flex gap-2 px-4 pt-3 overflow-x-auto">
+          {upcomingTickets.map(tk => {
+            const tcfg   = getMapConfig(tk);
+            const active = tk.id === tracked?.id;
+            return (
+              <button key={tk.id} onClick={() => setTrackedId(tk.id)}
+                className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                style={active
+                  ? { background: C.accent, color: C.primary }
+                  : { background: 'white',  color: C.muted, border: `1px solid ${C.border}` }}>
+                {tcfg.chipLabel}
+                <span className="ml-1.5 opacity-60">{tk.date.slice(5).replace('-', '/')}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Alert banner */}
       <div className="mx-4 mt-3 p-3 rounded-2xl flex items-start gap-3"
-        style={{ background:'#FFF3CD', border:'1px solid #FFE082' }}>
-        <AlertTriangle size={16} color={C.warning} className="flex-shrink-0 mt-0.5" />
+        style={{ background: isDelay ? '#FFF3CD' : '#E8F5E9', border: `1px solid ${isDelay ? '#FFE082' : '#A5D6A7'}` }}>
+        <AlertTriangle size={16} color={isDelay ? C.warning : C.success} className="flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-xs font-bold" style={{ color:'#856404' }}>+8 min delay on EC 89 (DB)</p>
-          <p className="text-xs" style={{ color:'#856404' }}>Transfer at Verona still possible (29 → 21 min buffer)</p>
+          <p className="text-xs font-bold" style={{ color: isDelay ? '#856404' : '#2E7D32' }}>{alertCfg.msg}</p>
+          <p className="text-xs" style={{ color: isDelay ? '#856404' : '#2E7D32' }}>{alertCfg.detail}</p>
         </div>
       </div>
 
-      {/* Real interactive map */}
-      <div className="mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg" style={{ height: 280 }}>
-        <MapContainer
-          bounds={mapBounds}
-          boundsOptions={{ padding: [32, 32] }}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
-        >
+      {/* Map */}
+      <div className="mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg" style={{ height: 255 }}>
+        <MapContainer key={trackedId} bounds={mapBounds} boundsOptions={{ padding: [32, 32] }}
+          style={{ height: '100%', width: '100%' }} zoomControl={false} attributionControl={false}>
           <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-          {/* Route polylines coloured by leg status */}
           {polylines.map((pl, i) => (
-            <Polyline
-              key={i}
-              positions={pl.pts}
-              pathOptions={{
-                color:       pl.color,
-                weight:      pl.weight,
-                opacity:     pl.dashed ? 0.5 : 1,
-                dashArray:   pl.dashed ? '10 7' : undefined,
-              }}
-            />
+            <Polyline key={i} positions={pl.pts}
+              pathOptions={{ color: pl.color, weight: pl.weight, opacity: pl.dashed ? 0.5 : 1, dashArray: pl.dashed ? '10 7' : undefined }} />
           ))}
-
-          {/* Waypoint circle markers */}
           {WAYPOINTS.map((wp, i) => {
             const isStart  = i === 0;
             const isEnd    = i === WAYPOINTS.length - 1;
             const isPassed = i <= activeMapLeg.from;
             return (
-              <CircleMarker
-                key={i}
-                center={wp.coords}
-                radius={isStart || isEnd ? 9 : 6}
-                pathOptions={{
-                  fillColor:   isPassed ? C.success : isEnd ? C.accent : 'white',
-                  fillOpacity: 1,
-                  color:       isPassed ? C.success : wp.color,
-                  weight:      2.5,
-                }}
-              >
+              <CircleMarker key={i} center={wp.coords} radius={isStart || isEnd ? 9 : 6}
+                pathOptions={{ fillColor: isPassed ? C.success : isEnd ? C.accent : 'white', fillOpacity: 1, color: isPassed ? C.success : wp.color, weight: 2.5 }}>
                 <Popup>
                   <strong>{wp.label}</strong>
                   {isStart && <div style={{ color: C.success }}>🟢 Journey start</div>}
-                  {isEnd   && <div style={{ color: C.accent  }}>🏁 Final destination</div>}
+                  {isEnd   && <div style={{ color: C.accent  }}>🏁 Destination</div>}
                 </Popup>
               </CircleMarker>
             );
           })}
-
-          {/* Live vehicle position marker */}
-          <CircleMarker
-            center={vehiclePos}
-            radius={11}
-            pathOptions={{ fillColor: C.success, fillOpacity: 1, color: 'white', weight: 2.5 }}
-          >
-            <Popup><strong>EC 89</strong> · In transit<br />Next: Kufstein (~18 min)</Popup>
+          <CircleMarker center={vehiclePos} radius={11}
+            pathOptions={{ fillColor: C.success, fillOpacity: 1, color: 'white', weight: 2.5 }}>
+            <Popup><strong>{activeMapLeg.vehicle}</strong> · In transit<br />Next: {activeMapLeg.nextStop} (~{activeMapLeg.nextIn} min)</Popup>
           </CircleMarker>
         </MapContainer>
       </div>
 
-      {/* Journey progress timeline */}
-      <div className="mx-4 mt-3 overflow-y-auto scrollable" style={{ maxHeight: 220 }}>
-        {/* Active leg info card */}
-        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+      {/* Progress + leg list */}
+      <div className="mx-4 mt-3 overflow-y-auto scrollable space-y-3 pb-2" style={{ maxHeight: 195 }}>
+        {/* Active leg card */}
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ background: C.success, animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-              <span className="text-sm font-bold" style={{ color: C.text }}>EC 89 — {t('live_tracking')}</span>
+              <span className="text-sm font-bold" style={{ color: C.text }}>{activeMapLeg.vehicle} — {t('live_tracking')}</span>
             </div>
-            <OperatorBadge opId="db" />
+            <OperatorBadge opId={activeMapLeg.op} />
           </div>
           <div className="flex gap-4 flex-wrap">
             <div>
               <p className="text-xs" style={{ color: C.muted }}>{t('next_stop')}</p>
-              <p className="text-sm font-semibold" style={{ color: C.text }}>Kufstein</p>
-              <p className="text-xs" style={{ color: C.muted }}>in ~18 min</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>{activeMapLeg.nextStop}</p>
+              <p className="text-xs" style={{ color: C.muted }}>in ~{activeMapLeg.nextIn} min</p>
             </div>
             <div>
               <p className="text-xs" style={{ color: C.muted }}>{t('leg_arrival')}</p>
-              <p className="text-sm font-semibold" style={{ color: C.text }}>Verona PN</p>
-              <p className="text-xs font-semibold" style={{ color: C.warning }}>~12:49 (+8 min)</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>{WAYPOINTS[activeMapLeg.to].label}</p>
+              {activeMapLeg.delay > 0
+                ? <p className="text-xs font-semibold" style={{ color: C.warning }}>+{activeMapLeg.delay} min</p>
+                : <p className="text-xs" style={{ color: C.success }}>On time</p>}
             </div>
             <div className="ml-auto text-right">
               <p className="text-xs" style={{ color: C.muted }}>{t('overall')}</p>
@@ -1539,43 +1567,33 @@ function MapScreen({ appState, dispatch }) {
           </div>
         </div>
 
-        {/* Leg-by-leg status timeline */}
+        {/* Leg timeline */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
           <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: C.muted }}>{t('journey_legs')}</p>
           {MAP_LEGS.map((leg, i) => {
-            const op = OPERATORS[leg.op];
-            const from = WAYPOINTS[leg.from];
-            const to   = WAYPOINTS[leg.to];
+            const op          = OPERATORS[leg.op];
             const isCompleted = leg.status === 'completed';
             const isActive    = leg.status === 'active';
             return (
               <div key={i} className="flex items-start gap-3 pb-3 last:pb-0">
                 <div className="flex flex-col items-center">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: isCompleted ? C.success : isActive ? op.color : C.border }}>
-                    {isCompleted ? <Check size={13} color="white" /> : <VehicleIcon type={leg.op === 'flix' ? 'bus' : (leg.op === 'mvg' || leg.op === 'atm') ? 'metro' : 'rail'} size={12} />}
+                    style={{ background: isCompleted ? C.success : isActive ? (op?.color || C.primary) : C.border }}>
+                    {isCompleted ? <Check size={13} color="white" /> : <VehicleIcon type={op?.type || 'rail'} size={12} />}
                   </div>
                   {i < MAP_LEGS.length - 1 && <div className="w-0.5 h-6 mt-1" style={{ background: isCompleted ? C.success : C.border }} />}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold" style={{ color: C.text }}>{from.label} → {to.label}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold" style={{ color: C.text }}>{WAYPOINTS[leg.from].label} → {WAYPOINTS[leg.to].label}</span>
                     {isCompleted && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.success + '15', color: C.success }}>{t('done')}</span>}
-                    {isActive && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.primary + '15', color: C.primary }}>
-                        {t('in_transit')}
-                      </span>
-                    )}
-                    {leg.delay > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.warning + '15', color: C.warning }}>
-                        +{leg.delay}m
-                      </span>
-                    )}
+                    {isActive    && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.primary + '15', color: C.primary }}>{t('in_transit')}</span>}
+                    {leg.delay > 0 && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.warning + '15', color: C.warning }}>+{leg.delay}m</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <OperatorBadge opId={leg.op} />
                     <span className="text-xs" style={{ color: C.muted }}>{leg.vehicle}</span>
-                    {leg.status === 'upcoming' && <span className="text-xs" style={{ color: C.muted }}>· {t('scheduled')}</span>}
+                    {!isCompleted && !isActive && <span className="text-xs" style={{ color: C.muted }}>· {t('scheduled')}</span>}
                   </div>
                 </div>
               </div>

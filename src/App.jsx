@@ -93,12 +93,13 @@ const LOCATIONS = [
   { id: 'l_pisa_r',   label: 'Pisa, Via Roma',                      short: 'Via Roma, Pisa',  city: 'pisa',   type: 'address',    emoji: '📍', lat: 43.7151, lon: 10.4013 },
 
   // ── Milan ───
-  { id: 'l_mxp',       label: 'Milan Malpensa Airport (MXP)',           short: 'Malpensa Airport',       city: 'milan', type: 'airport',    emoji: '✈️', lat: 45.6227, lon:  8.7282 },
-  { id: 'l_porta_v',   label: 'Porta Venezia, Milan',                   short: 'Porta Venezia',          city: 'milan', type: 'district',   emoji: '🌸', lat: 45.4720, lon:  9.2100 },
-  { id: 'l_flamingos', label: 'Villa Invernizzi – Flamingo Garden',     short: 'Villa Invernizzi',       city: 'milan', type: 'attraction', emoji: '🦩', lat: 45.4700, lon:  9.2025 },
-  { id: 'l_san_lor',   label: 'Colonne di San Lorenzo, Milan',          short: 'Colonne di San Lorenzo', city: 'milan', type: 'attraction', emoji: '🏛️', lat: 45.4582, lon:  9.1810 },
-  { id: 'l_navigli',   label: 'Navigli, Milan',                         short: 'Navigli',                city: 'milan', type: 'district',   emoji: '🌊', lat: 45.4513, lon:  9.1734 },
-  { id: 'l_brera',     label: 'Brera, Milan',                           short: 'Brera',                  city: 'milan', type: 'district',   emoji: '🎨', lat: 45.4719, lon:  9.1869 },
+  { id: 'l_mxp',       label: 'Milan Malpensa Airport (MXP)',                      short: 'Malpensa Airport',   city: 'milan', type: 'airport',    emoji: '✈️', lat: 45.6227, lon:  8.7282 },
+  { id: 'l_vc',        label: 'Villaggio Cavour, Settimo Milanese',               short: 'Villaggio Cavour',   city: 'milan', type: 'district',   emoji: '🌿', lat: 45.4670, lon:  9.0222 },
+  { id: 'l_vc_addr',   label: 'Via Guglielmo Marconi 8, Settimo Milanese',        short: 'Via G. Marconi 8',   city: 'milan', type: 'address',    emoji: '📍', lat: 45.4670, lon:  9.0222 },
+  { id: 'l_flamingos', label: 'Villa Invernizzi – Flamingo Garden, Milan',        short: 'Villa Invernizzi',   city: 'milan', type: 'attraction', emoji: '🦩', lat: 45.4700, lon:  9.2025 },
+  { id: 'l_san_lor',   label: 'Colonne di San Lorenzo, Milan',                    short: 'Colonne di S.Lorenzo', city: 'milan', type: 'attraction', emoji: '🏛️', lat: 45.4582, lon:  9.1810 },
+  { id: 'l_navigli',   label: 'Navigli, Milan',                                   short: 'Navigli',            city: 'milan', type: 'district',   emoji: '🌊', lat: 45.4513, lon:  9.1734 },
+  { id: 'l_brera',     label: 'Brera, Milan',                                     short: 'Brera',              city: 'milan', type: 'district',   emoji: '🎨', lat: 45.4719, lon:  9.1869 },
 ];
 
 const getCityById  = (id)   => CITIES.find(c => c.id === id);
@@ -288,37 +289,39 @@ const PISA_ROUTES = [
 
 // ─── MILAN IN-CITY ROUTES (Malpensa ↔ Porta Venezia / city centre) ───────────
 const MILAN_ROUTES = [
-  // ── Arrival: Malpensa → Porta Venezia ──
+  // ── Arrival: Malpensa → Villaggio Cavour (Settimo Milanese) ──
   { id:'rmx1', origin:'milan', destination:'milan', label:'Malpensa Express',
     legs:[
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail', from:'Malpensa T1',     to:'Milano Centrale',  dep:'15:05', arr:'15:56', dur:51, platform:'1' },
-      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'P.za Duca Aosta', to:'Porta Venezia',   dep:'16:05', arr:'16:14', dur:9,  platform:'Cso Buenos Aires' },
-    ], totalDur:69, totalPrice:13.90, transfers:1 },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:05', arr:'15:56', dur:51, platform:'1' },
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:05', arr:'16:24', dur:19, platform:'Via Vitruvio' },
+    ], totalDur:79, totalPrice:13.90, transfers:1 },
 
   { id:'rmx2', origin:'milan', destination:'milan', label:'Via Cadorna',
     legs:[
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',   to:'Milano Cadorna',   dep:'15:25', arr:'16:02', dur:37, platform:'1' },
-      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.',  to:'Porta Venezia',    dep:'16:10', arr:'16:22', dur:12, platform:'M1 rossa' },
-    ], totalDur:57, totalPrice:15.00, transfers:1 },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Cadorna',     dep:'15:25', arr:'16:02', dur:37, platform:'1' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.',       to:'Rho Fiera',         dep:'16:10', arr:'16:28', dur:18, platform:'M1 rossa' },
+      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Rho Fiera',          to:'Villaggio Cavour',  dep:'16:35', arr:'16:43', dur:8,  platform:'Fermata Rho' },
+    ], totalDur:78, totalPrice:15.00, transfers:2 },
 
   { id:'rmx3', origin:'milan', destination:'milan', label:'Budget Bus',
     legs:[
-      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',    to:'Milano Centrale', dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
-      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'P.za Duca Aosta', to:'Porta Venezia',  dep:'16:35', arr:'16:44', dur:9,  platform:'Cso Buenos Aires' },
-    ], totalDur:74, totalPrice:8.40, transfers:1 },
+      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:35', arr:'16:54', dur:19, platform:'Via Vitruvio' },
+    ], totalDur:84, totalPrice:8.40, transfers:1 },
 
-  // ── Departure: Porta Venezia → Malpensa ──
+  // ── Departure: Villaggio Cavour → Malpensa ──
   { id:'rmx1r', origin:'milan', destination:'milan', label:'Malpensa Express',
     legs:[
-      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'Porta Venezia',  to:'P.za Duca Aosta',  dep:'09:00', arr:'09:09', dur:9,  platform:'Porta Venezia' },
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Centrale', to:'Malpensa T1',     dep:'09:25', arr:'10:16', dur:51, platform:'2' },
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Villaggio Cavour',  to:'Milano Centrale',    dep:'09:00', arr:'09:19', dur:19, platform:'Via G. Marconi' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Centrale',   to:'Malpensa T1',        dep:'09:25', arr:'10:16', dur:51, platform:'2' },
     ], totalDur:76, totalPrice:13.90, transfers:1 },
 
   { id:'rmx2r', origin:'milan', destination:'milan', label:'Via Cadorna',
     legs:[
-      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Porta Venezia',  to:'Cadorna F.N.',     dep:'08:50', arr:'09:02', dur:12, platform:'M1 rossa' },
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Cadorna',  to:'Malpensa T1',     dep:'09:10', arr:'09:47', dur:37, platform:'1' },
-    ], totalDur:57, totalPrice:15.00, transfers:1 },
+      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Villaggio Cavour',  to:'Rho Fiera',          dep:'08:30', arr:'08:38', dur:8,  platform:'Via G. Marconi' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Rho Fiera',          to:'Cadorna F.N.',       dep:'08:45', arr:'09:03', dur:18, platform:'M1 rossa' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Cadorna',    to:'Malpensa T1',        dep:'09:10', arr:'09:47', dur:37, platform:'1' },
+    ], totalDur:77, totalPrice:15.00, transfers:2 },
 ];
 
 const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES, ...MILAN_ROUTES];
@@ -553,12 +556,14 @@ function HomeScreen({ appState, dispatch }) {
   const doSearch = (from, to) => {
     if (!from || !to) return;
     dispatch({
-      type:       'SEARCH',
-      from:       resolveCityName(from),
-      to:         resolveCityName(to),
-      fromCoords: fromCoords ?? null,
-      toCoords:   toCoords   ?? null,
-      date:       dateVal,
+      type:        'SEARCH',
+      from:        resolveCityName(from),
+      to:          resolveCityName(to),
+      fromLabel:   from,
+      toLabel:     to,
+      fromCoords:  fromCoords ?? null,
+      toCoords:    toCoords   ?? null,
+      date:        dateVal,
     });
   };
 
@@ -728,7 +733,9 @@ function ResultsScreen({ appState, dispatch }) {
   const [liveRoutes, setLiveRoutes] = useState([]);
   const [loading, setLoading]     = useState(false);
 
-  const { searchFrom, searchTo, searchDate, fromCoords, toCoords } = appState;
+  const { searchFrom, searchTo, searchFromLabel, searchToLabel, searchDate, fromCoords, toCoords } = appState;
+  const displayFrom = searchFromLabel || searchFrom;
+  const displayTo   = searchToLabel   || searchTo;
 
   // ── Live API fetch ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -867,10 +874,10 @@ function ResultsScreen({ appState, dispatch }) {
           className="flex items-center gap-1 text-xs mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
           <ChevronRight size={14} className="rotate-180" /> {t('back')}
         </button>
-        <div className="flex items-center gap-2">
-          <h1 className="text-white font-bold text-lg">{searchFrom}</h1>
-          <ArrowRight size={16} color="rgba(255,255,255,0.6)" />
-          <h1 className="text-white font-bold text-lg">{searchTo}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-white font-bold text-base leading-snug">{displayFrom}</h1>
+          <ArrowRight size={16} color="rgba(255,255,255,0.6)" className="flex-shrink-0" />
+          <h1 className="text-white font-bold text-base leading-snug">{displayTo}</h1>
         </div>
         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
           {totalCount} {t('routes')} · {formatSearchDate(searchDate, t)}
@@ -951,10 +958,12 @@ function ResultsScreen({ appState, dispatch }) {
 function DetailScreen({ appState, dispatch }) {
   const { t } = useTranslation();
   const [addOn, setAddOn] = useState(false);
-  const { selectedRoute, searchFrom, searchTo } = appState;
+  const { selectedRoute, searchFrom, searchTo, searchFromLabel, searchToLabel } = appState;
   const route = selectedRoute;
   if (!route) return null;
 
+  const displayFrom = searchFromLabel || searchFrom;
+  const displayTo   = searchToLabel   || searchTo;
   const destCity   = getCityByName(searchTo);
   const transitPass = destCity?.transitPass;
   const total = route.totalPrice + (addOn && transitPass ? transitPass.price : 0);
@@ -966,7 +975,7 @@ function DetailScreen({ appState, dispatch }) {
           className="flex items-center gap-1 text-xs mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
           <ChevronRight size={14} className="rotate-180" /> {t('back_to_results')}
         </button>
-        <h1 className="text-white font-bold text-lg">{searchFrom} → {searchTo}</h1>
+        <h1 className="text-white font-bold text-base leading-snug">{displayFrom} → {displayTo}</h1>
         <div className="flex items-center gap-3 mt-2">
           <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{fmtDur(route.totalDur)}</span>
           <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
@@ -1376,21 +1385,21 @@ function WalletScreen({ appState, dispatch }) {
 
 // ─── MAP CONFIGURATIONS (one per tracked journey) ────────────────────────────
 const MAP_CONFIGS = {
-  mxp_pv: {
-    chipLabel: '✈️ Malpensa → Porta Venezia',
-    title:     '✈️ Malpensa → Porta Venezia',
+  mxp_vc: {
+    chipLabel: '✈️ Malpensa → Villaggio Cavour',
+    title:     '✈️ Malpensa → Villaggio Cavour',
     alert:     { msg: 'Malpensa Express on time', detail: 'Platform 1 · Next stop: Saronno (~8 min)' },
     activeLeg: 0,
     initProgress: 22,
     waypoints: [
-      { coords: [45.6227,  8.7282], label: 'Malpensa T1',     color: C.success },
-      { coords: [45.6279,  9.0379], label: 'Saronno',         color: '#007AB3' },
-      { coords: [45.4862,  9.2037], label: 'Milano Centrale', color: '#007AB3' },
-      { coords: [45.4720,  9.2100], label: 'Porta Venezia 🌸',color: C.accent  },
+      { coords: [45.6227,  8.7282], label: 'Malpensa T1',       color: C.success },
+      { coords: [45.6279,  9.0379], label: 'Saronno',           color: '#007AB3' },
+      { coords: [45.4862,  9.2037], label: 'Milano Centrale',   color: '#007AB3' },
+      { coords: [45.4670,  9.0222], label: 'Villaggio Cavour 🌿', color: C.accent },
     ],
     legs: [
-      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno',  nextIn: 8  },
-      { op: 'atm',     vehicle: 'Tram 9',           from: 2, to: 3, status: 'upcoming', delay: 0 },
+      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno',          nextIn: 8  },
+      { op: 'atm',     vehicle: 'Bus 78',           from: 2, to: 3, status: 'upcoming', delay: 0 },
     ],
   },
   muc_mil: {
@@ -1417,10 +1426,10 @@ const MAP_CONFIGS = {
 };
 
 const getMapConfig = (ticket) => {
-  if (!ticket) return MAP_CONFIGS.mxp_pv;
-  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_pv;
+  if (!ticket) return MAP_CONFIGS.mxp_vc;
+  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_vc;
   if (ticket.origin === 'munich' && ticket.destination === 'milan') return MAP_CONFIGS.muc_mil;
-  return MAP_CONFIGS.mxp_pv;
+  return MAP_CONFIGS.mxp_vc;
 };
 
 // ─── SCREEN: MAP ──────────────────────────────────────────────────────────────
@@ -1735,6 +1744,8 @@ const initialState = {
   screen: 'home',
   searchFrom: '',
   searchTo: '',
+  searchFromLabel: '',
+  searchToLabel: '',
   searchDate: '',
   fromCoords: null,
   toCoords: null,
@@ -1750,7 +1761,7 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'GOTO':       return { ...state, screen: action.screen };
-    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchDate: action.date || '', fromCoords: action.fromCoords || null, toCoords: action.toCoords || null };
+    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchFromLabel: action.fromLabel || action.from, searchToLabel: action.toLabel || action.to, searchDate: action.date || '', fromCoords: action.fromCoords || null, toCoords: action.toCoords || null };
     case 'SELECT_ROUTE': return { ...state, screen:'detail', selectedRoute: action.route };
     case 'START_CHECKOUT': return { ...state, screen:'checkout', checkoutStep:1, checkoutPrice: action.price, checkoutAddOn: action.addOn };
     case 'NEXT_STEP':  return { ...state, checkoutStep: Math.min(4, state.checkoutStep + 1) };

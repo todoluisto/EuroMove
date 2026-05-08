@@ -1081,7 +1081,8 @@ function CheckoutScreen({ appState, dispatch }) {
 
   const totalPax  = pax.adults + pax.children + pax.students;
   const finalPrice = ((checkoutPrice || 0) * (totalPax || 1)).toFixed(2);
-  const bookingRef = 'EM-' + Math.random().toString(36).toUpperCase().slice(2, 10);
+  // Stable ref — must not regenerate on re-render (otherwise confirmed ref ≠ displayed ref)
+  const [bookingRef] = useState(() => 'EM-' + Math.random().toString(36).toUpperCase().slice(2, 10));
 
   const PaxRow = ({ label, sub, field }) => (
     <div className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: C.border }}>
@@ -1137,7 +1138,7 @@ function CheckoutScreen({ appState, dispatch }) {
             </div>
           </div>
 
-          <button onClick={() => dispatch({ type:'CONFIRM_BOOKING', ref:bookingRef, passengers:pax, price:parseFloat(finalPrice), addOn:checkoutAddOn })}
+          <button onClick={() => dispatch({ type:'GOTO', screen:'wallet' })}
             className="w-full py-3.5 rounded-xl font-bold text-sm text-white mb-2" style={{ background: C.primary }}>
             {t('view_ticket_wallet')}
           </button>
@@ -1273,7 +1274,14 @@ function CheckoutScreen({ appState, dispatch }) {
             </span>
             <span className="text-lg font-bold" style={{ color: C.text }}>€{finalPrice}</span>
           </div>
-          <button onClick={() => dispatch({ type:'NEXT_STEP' })}
+          <button onClick={() => {
+              if (checkoutStep === 3) {
+                // Payment confirmed → save ticket immediately, then show confirmation
+                dispatch({ type:'CONFIRM_BOOKING', ref:bookingRef, passengers:pax, price:parseFloat(finalPrice), addOn:checkoutAddOn });
+              } else {
+                dispatch({ type:'NEXT_STEP' });
+              }
+            }}
             className="w-full py-3.5 rounded-xl text-base font-bold"
             style={{ background: C.accent, color: C.primary }}>
             {checkoutStep === 1 ? t('continue_btn') : checkoutStep === 2 ? t('continue_to_payment') : `${t('pay_btn')} €${finalPrice}`}
@@ -1768,11 +1776,15 @@ function reducer(state, action) {
     case 'PREV_STEP':  return { ...state, checkoutStep: Math.max(1, state.checkoutStep - 1) };
     case 'CONFIRM_BOOKING': {
       const route = state.selectedRoute;
+      // Prefer the route's own origin/destination so in-city routes (origin===destination)
+      // work correctly; fall back to city-name resolution, then generic defaults.
+      const originId = route?.origin      || getCityByName(state.searchFrom)?.id || 'milan';
+      const destId   = route?.destination || getCityByName(state.searchTo)?.id   || 'milan';
       const newTicket = {
         id: 't' + Date.now(),
         ref: action.ref,
-        origin:      getCityByName(state.searchFrom)?.id || 'berlin',
-        destination: getCityByName(state.searchTo)?.id   || 'paris',
+        origin:      originId,
+        destination: destId,
         date:        new Date().toISOString().slice(0, 10),
         depTime:     route?.legs[0]?.dep || '09:00',
         arrTime:     route?.legs[route.legs.length - 1]?.arr || '17:00',
@@ -1783,7 +1795,9 @@ function reducer(state, action) {
         addOn:       action.addOn,
         purchaseDate: new Date().toISOString().slice(0, 10),
       };
-      return { ...state, screen:'wallet', tickets: [newTicket, ...state.tickets], checkoutStep:1 };
+      // Stay on checkout screen at step 4 (confirmation UI) — ticket is already saved.
+      // Buttons on step 4 navigate to wallet or home via GOTO.
+      return { ...state, screen:'checkout', checkoutStep: 4, tickets: [newTicket, ...state.tickets] };
     }
     case 'SET_LANGUAGE': return { ...state, language: action.language };
     default: return state;

@@ -41,7 +41,8 @@ const OPERATORS = {
   mvg:   { id: 'mvg',   name: 'MVG',        fullName: 'MVG München',    color: '#0B6E4F', type: 'metro' },
   obb:   { id: 'obb',   name: 'ÖBB',        fullName: 'ÖBB Austria',    color: '#E2001A', type: 'rail'  },
   ns:    { id: 'ns',    name: 'NS',         fullName: 'NS Dutch Railways', color: '#FFD700', type: 'rail' },
-  ctt:   { id: 'ctt',  name: 'CTT',        fullName: 'CTT Nord Pisa',     color: '#FF6B00', type: 'bus'  },
+  ctt:     { id: 'ctt',     name: 'CTT',      fullName: 'CTT Nord Pisa',        color: '#FF6B00', type: 'bus'  },
+  trenord: { id: 'trenord', name: 'Trenord',  fullName: 'Trenord Lombardia',    color: '#007AB3', type: 'rail' },
 };
 
 const CITIES = [
@@ -90,6 +91,14 @@ const LOCATIONS = [
   { id: 'l_torre',    label: 'Torre Pendente di Pisa',              short: 'Torre Pendente',  city: 'pisa',   type: 'attraction', emoji: '🗼', lat: 43.7230, lon: 10.3966 },
   { id: 'l_miracoli', label: 'Piazza dei Miracoli, Pisa',           short: 'Piazza Miracoli', city: 'pisa',   type: 'attraction', emoji: '🏛️', lat: 43.7229, lon: 10.3964 },
   { id: 'l_pisa_r',   label: 'Pisa, Via Roma',                      short: 'Via Roma, Pisa',  city: 'pisa',   type: 'address',    emoji: '📍', lat: 43.7151, lon: 10.4013 },
+
+  // ── Milan ───
+  { id: 'l_mxp',       label: 'Milan Malpensa Airport (MXP)',           short: 'Malpensa Airport',       city: 'milan', type: 'airport',    emoji: '✈️', lat: 45.6227, lon:  8.7282 },
+  { id: 'l_porta_v',   label: 'Porta Venezia, Milan',                   short: 'Porta Venezia',          city: 'milan', type: 'district',   emoji: '🌸', lat: 45.4720, lon:  9.2100 },
+  { id: 'l_flamingos', label: 'Villa Invernizzi – Flamingo Garden',     short: 'Villa Invernizzi',       city: 'milan', type: 'attraction', emoji: '🦩', lat: 45.4700, lon:  9.2025 },
+  { id: 'l_san_lor',   label: 'Colonne di San Lorenzo, Milan',          short: 'Colonne di San Lorenzo', city: 'milan', type: 'attraction', emoji: '🏛️', lat: 45.4582, lon:  9.1810 },
+  { id: 'l_navigli',   label: 'Navigli, Milan',                         short: 'Navigli',                city: 'milan', type: 'district',   emoji: '🌊', lat: 45.4513, lon:  9.1734 },
+  { id: 'l_brera',     label: 'Brera, Milan',                           short: 'Brera',                  city: 'milan', type: 'district',   emoji: '🎨', lat: 45.4719, lon:  9.1869 },
 ];
 
 const getCityById  = (id)   => CITIES.find(c => c.id === id);
@@ -277,7 +286,42 @@ const PISA_ROUTES = [
     ], totalDur:20, totalPrice:2.70, transfers:0 },
 ];
 
-const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES];
+// ─── MILAN IN-CITY ROUTES (Malpensa ↔ Porta Venezia / city centre) ───────────
+const MILAN_ROUTES = [
+  // ── Arrival: Malpensa → Porta Venezia ──
+  { id:'rmx1', origin:'milan', destination:'milan', label:'Malpensa Express',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail', from:'Malpensa T1',     to:'Milano Centrale',  dep:'15:05', arr:'15:56', dur:51, platform:'1' },
+      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'P.za Duca Aosta', to:'Porta Venezia',   dep:'16:05', arr:'16:14', dur:9,  platform:'Cso Buenos Aires' },
+    ], totalDur:69, totalPrice:13.90, transfers:1 },
+
+  { id:'rmx2', origin:'milan', destination:'milan', label:'Via Cadorna',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',   to:'Milano Cadorna',   dep:'15:25', arr:'16:02', dur:37, platform:'1' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.',  to:'Porta Venezia',    dep:'16:10', arr:'16:22', dur:12, platform:'M1 rossa' },
+    ], totalDur:57, totalPrice:15.00, transfers:1 },
+
+  { id:'rmx3', origin:'milan', destination:'milan', label:'Budget Bus',
+    legs:[
+      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',    to:'Milano Centrale', dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
+      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'P.za Duca Aosta', to:'Porta Venezia',  dep:'16:35', arr:'16:44', dur:9,  platform:'Cso Buenos Aires' },
+    ], totalDur:74, totalPrice:8.40, transfers:1 },
+
+  // ── Departure: Porta Venezia → Malpensa ──
+  { id:'rmx1r', origin:'milan', destination:'milan', label:'Malpensa Express',
+    legs:[
+      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'Porta Venezia',  to:'P.za Duca Aosta',  dep:'09:00', arr:'09:09', dur:9,  platform:'Porta Venezia' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Centrale', to:'Malpensa T1',     dep:'09:25', arr:'10:16', dur:51, platform:'2' },
+    ], totalDur:76, totalPrice:13.90, transfers:1 },
+
+  { id:'rmx2r', origin:'milan', destination:'milan', label:'Via Cadorna',
+    legs:[
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Porta Venezia',  to:'Cadorna F.N.',     dep:'08:50', arr:'09:02', dur:12, platform:'M1 rossa' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Cadorna',  to:'Malpensa T1',     dep:'09:10', arr:'09:47', dur:37, platform:'1' },
+    ], totalDur:57, totalPrice:15.00, transfers:1 },
+];
+
+const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES, ...MILAN_ROUTES];
 
 const INSPIRATION = [
   { id:'i1', title:'Weekend in Prague',  subtitle:'Direct from Berlin',   from:'berlin',    to:'prague',   price:19,  dur:'4h 30m', gradient:'linear-gradient(135deg,#003D7E 0%,#6B7280 100%)' },

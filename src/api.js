@@ -56,6 +56,8 @@ const AGENCY_TO_OP = {
   'sncf':                'sncf',
   'sncf voyageurs':      'sncf',
   'trenitalia':          'trit',
+  'trenord':             'trenord',
+  'trenord lombardia':   'trenord',
   'flixbus':             'flix',
   'flixbus/flixtrain':   'flix',
   'thalys':              'thal',

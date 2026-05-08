@@ -352,13 +352,6 @@ const INIT_TICKETS = [
     route: ROUTES.find(r => r.id === 'r12'),
     passengers:{ adults:1, children:0, students:0 },
     price:79, addOn:null, purchaseDate:'2026-05-07' },
-  { id:'t3', ref:'EM-2026-P8L3',
-    origin:'paris', destination:'lyon',
-    date:'2026-04-28', depTime:'07:04', arrTime:'09:02',
-    status:'completed',
-    route: ROUTES.find(r => r.id === 'r8'),
-    passengers:{ adults:1, children:0, students:0 },
-    price:39, addOn:null, purchaseDate:'2026-04-20' },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────

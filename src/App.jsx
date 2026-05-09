@@ -340,18 +340,22 @@ const INSPIRATION = [
 const INIT_TICKETS = [
   { id:'t1', ref:'EM-2026-MXP1',
     origin:'milan', destination:'milan',
+    fromLabel: 'Milan Malpensa Airport (MXP)',
+    toLabel:   'Villaggio Cavour, Settimo Milanese',
     date:'2026-05-11', depTime:'15:05', arrTime:'16:14',
     status:'upcoming',
     route: ROUTES.find(r => r.id === 'rmx1'),
     passengers:{ adults:1, children:0, students:0 },
-    price:13.90, addOn:null, purchaseDate:'2026-05-07' },
+    price:13.90, addOn:null, purchaseDate:'2026-05-09' },
   { id:'t2', ref:'EM-2026-M1X2',
     origin:'munich', destination:'milan',
+    fromLabel: 'Westendstraße 8, Munich',
+    toLabel:   'Via Navigli 14, Milan',
     date:'2026-05-17', depTime:'06:42', arrTime:'14:57',
     status:'upcoming',
     route: ROUTES.find(r => r.id === 'r12'),
     passengers:{ adults:1, children:0, students:0 },
-    price:79, addOn:null, purchaseDate:'2026-05-07' },
+    price:79, addOn:null, purchaseDate:'2026-05-09' },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1313,13 +1317,19 @@ function WalletScreen({ appState, dispatch }) {
     const isExp = expandedId === ticket.id;
     const orig  = getCityById(ticket.origin);
     const dest  = getCityById(ticket.destination);
+    // Use stored labels if available; fall back to city name
+    const displayFrom = ticket.fromLabel || orig?.name || ticket.origin;
+    const displayTo   = ticket.toLabel   || dest?.name || ticket.destination;
     return (
       <div className="bg-white rounded-2xl overflow-hidden fade-in" style={{ boxShadow:'0 2px 12px rgba(0,0,0,0.08)' }}>
         <button className="w-full text-left p-4" onClick={() => setExpandedId(isExp ? null : ticket.id)}>
           <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-base font-bold mb-1" style={{ color: C.text }}>
-                {orig?.emoji} {orig?.name} → {dest?.emoji} {dest?.name}
+            <div className="flex-1 pr-2">
+              <p className="text-sm font-bold mb-1 leading-snug" style={{ color: C.text }}>
+                {orig?.emoji} {displayFrom}
+              </p>
+              <p className="text-sm font-bold mb-1 leading-snug" style={{ color: C.text }}>
+                → {dest?.emoji} {displayTo}
               </p>
               <p className="text-xs" style={{ color: C.muted }}>{ticket.date} · {ticket.depTime}–{ticket.arrTime}</p>
               <p className="text-xs font-mono mt-0.5" style={{ color: C.muted }}>{ticket.ref}</p>
@@ -1792,6 +1802,8 @@ function reducer(state, action) {
         ref: action.ref,
         origin:      originId,
         destination: destId,
+        fromLabel:   state.searchFromLabel || state.searchFrom,
+        toLabel:     state.searchToLabel   || state.searchTo,
         date:        new Date().toISOString().slice(0, 10),
         depTime:     route?.legs[0]?.dep || '09:00',
         arrTime:     route?.legs[route.legs.length - 1]?.arr || '17:00',

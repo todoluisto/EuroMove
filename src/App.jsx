@@ -347,15 +347,6 @@ const INIT_TICKETS = [
     route: ROUTES.find(r => r.id === 'rmx1'),
     passengers:{ adults:1, children:0, students:0 },
     price:13.90, addOn:null, purchaseDate:'2026-05-09' },
-  { id:'t2', ref:'EM-2026-M1X2',
-    origin:'munich', destination:'milan',
-    fromLabel: 'Westendstraße 8, Munich',
-    toLabel:   'Via Navigli 14, Milan',
-    date:'2026-05-17', depTime:'06:42', arrTime:'14:57',
-    status:'upcoming',
-    route: ROUTES.find(r => r.id === 'r12'),
-    passengers:{ adults:1, children:0, students:0 },
-    price:79, addOn:null, purchaseDate:'2026-05-09' },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────

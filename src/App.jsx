@@ -337,17 +337,7 @@ const INSPIRATION = [
   { id:'i8', title:'Munich → Berlin',    subtitle:'ICE direct, under 4h',       from:'munich', to:'berlin',     price:59, dur:'3h 47m', gradient:'linear-gradient(135deg,#003366 0%,#E30614 100%)' },
 ];
 
-const INIT_TICKETS = [
-  { id:'t1', ref:'EM-2026-MXP1',
-    origin:'milan', destination:'milan',
-    fromLabel: 'Milan Malpensa Airport (MXP)',
-    toLabel:   'Villaggio Cavour, Settimo Milanese',
-    date:'2026-05-11', depTime:'15:05', arrTime:'16:14',
-    status:'upcoming',
-    route: ROUTES.find(r => r.id === 'rmx1'),
-    passengers:{ adults:1, children:0, students:0 },
-    price:13.90, addOn:null, purchaseDate:'2026-05-09' },
-];
+const INIT_TICKETS = [];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const fmtDur = mins => {

@@ -41,7 +41,8 @@ const OPERATORS = {
   mvg:   { id: 'mvg',   name: 'MVG',        fullName: 'MVG München',    color: '#0B6E4F', type: 'metro' },
   obb:   { id: 'obb',   name: 'ÖBB',        fullName: 'ÖBB Austria',    color: '#E2001A', type: 'rail'  },
   ns:    { id: 'ns',    name: 'NS',         fullName: 'NS Dutch Railways', color: '#FFD700', type: 'rail' },
-  ctt:   { id: 'ctt',  name: 'CTT',        fullName: 'CTT Nord Pisa',     color: '#FF6B00', type: 'bus'  },
+  ctt:     { id: 'ctt',     name: 'CTT',      fullName: 'CTT Nord Pisa',        color: '#FF6B00', type: 'bus'  },
+  trenord: { id: 'trenord', name: 'Trenord',  fullName: 'Trenord Lombardia',    color: '#007AB3', type: 'rail' },
 };
 
 const CITIES = [
@@ -90,6 +91,15 @@ const LOCATIONS = [
   { id: 'l_torre',    label: 'Torre Pendente di Pisa',              short: 'Torre Pendente',  city: 'pisa',   type: 'attraction', emoji: '🗼', lat: 43.7230, lon: 10.3966 },
   { id: 'l_miracoli', label: 'Piazza dei Miracoli, Pisa',           short: 'Piazza Miracoli', city: 'pisa',   type: 'attraction', emoji: '🏛️', lat: 43.7229, lon: 10.3964 },
   { id: 'l_pisa_r',   label: 'Pisa, Via Roma',                      short: 'Via Roma, Pisa',  city: 'pisa',   type: 'address',    emoji: '📍', lat: 43.7151, lon: 10.4013 },
+
+  // ── Milan ───
+  { id: 'l_mxp',       label: 'Milan Malpensa Airport (MXP)',                      short: 'Malpensa Airport',   city: 'milan', type: 'airport',    emoji: '✈️', lat: 45.6227, lon:  8.7282 },
+  { id: 'l_vc',        label: 'Villaggio Cavour, Settimo Milanese',               short: 'Villaggio Cavour',   city: 'milan', type: 'district',   emoji: '🌿', lat: 45.4670, lon:  9.0222 },
+  { id: 'l_vc_addr',   label: 'Via Guglielmo Marconi 8, Settimo Milanese',        short: 'Via G. Marconi 8',   city: 'milan', type: 'address',    emoji: '📍', lat: 45.4670, lon:  9.0222 },
+  { id: 'l_flamingos', label: 'Villa Invernizzi – Flamingo Garden, Milan',        short: 'Villa Invernizzi',   city: 'milan', type: 'attraction', emoji: '🦩', lat: 45.4700, lon:  9.2025 },
+  { id: 'l_san_lor',   label: 'Colonne di San Lorenzo, Milan',                    short: 'Colonne di S.Lorenzo', city: 'milan', type: 'attraction', emoji: '🏛️', lat: 45.4582, lon:  9.1810 },
+  { id: 'l_navigli',   label: 'Navigli, Milan',                                   short: 'Navigli',            city: 'milan', type: 'district',   emoji: '🌊', lat: 45.4513, lon:  9.1734 },
+  { id: 'l_brera',     label: 'Brera, Milan',                                     short: 'Brera',              city: 'milan', type: 'district',   emoji: '🎨', lat: 45.4719, lon:  9.1869 },
 ];
 
 const getCityById  = (id)   => CITIES.find(c => c.id === id);
@@ -277,7 +287,44 @@ const PISA_ROUTES = [
     ], totalDur:20, totalPrice:2.70, transfers:0 },
 ];
 
-const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES];
+// ─── MILAN IN-CITY ROUTES (Malpensa ↔ Porta Venezia / city centre) ───────────
+const MILAN_ROUTES = [
+  // ── Arrival: Malpensa → Villaggio Cavour (Settimo Milanese) ──
+  { id:'rmx1', origin:'milan', destination:'milan', label:'Malpensa Express',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:05', arr:'15:56', dur:51, platform:'1' },
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:05', arr:'16:24', dur:19, platform:'Via Vitruvio' },
+    ], totalDur:79, totalPrice:13.90, transfers:1 },
+
+  { id:'rmx2', origin:'milan', destination:'milan', label:'Via Cadorna',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Cadorna',     dep:'15:25', arr:'16:02', dur:37, platform:'1' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.',       to:'Rho Fiera',         dep:'16:10', arr:'16:28', dur:18, platform:'M1 rossa' },
+      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Rho Fiera',          to:'Villaggio Cavour',  dep:'16:35', arr:'16:43', dur:8,  platform:'Fermata Rho' },
+    ], totalDur:78, totalPrice:15.00, transfers:2 },
+
+  { id:'rmx3', origin:'milan', destination:'milan', label:'Budget Bus',
+    legs:[
+      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:35', arr:'16:54', dur:19, platform:'Via Vitruvio' },
+    ], totalDur:84, totalPrice:8.40, transfers:1 },
+
+  // ── Departure: Villaggio Cavour → Malpensa ──
+  { id:'rmx1r', origin:'milan', destination:'milan', label:'Malpensa Express',
+    legs:[
+      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Villaggio Cavour',  to:'Milano Centrale',    dep:'09:00', arr:'09:19', dur:19, platform:'Via G. Marconi' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Centrale',   to:'Malpensa T1',        dep:'09:25', arr:'10:16', dur:51, platform:'2' },
+    ], totalDur:76, totalPrice:13.90, transfers:1 },
+
+  { id:'rmx2r', origin:'milan', destination:'milan', label:'Via Cadorna',
+    legs:[
+      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Villaggio Cavour',  to:'Rho Fiera',          dep:'08:30', arr:'08:38', dur:8,  platform:'Via G. Marconi' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Rho Fiera',          to:'Cadorna F.N.',       dep:'08:45', arr:'09:03', dur:18, platform:'M1 rossa' },
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Cadorna',    to:'Malpensa T1',        dep:'09:10', arr:'09:47', dur:37, platform:'1' },
+    ], totalDur:77, totalPrice:15.00, transfers:2 },
+];
+
+const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES, ...MILAN_ROUTES];
 
 const INSPIRATION = [
   { id:'i1', title:'Weekend in Prague',  subtitle:'Direct from Berlin',   from:'berlin',    to:'prague',   price:19,  dur:'4h 30m', gradient:'linear-gradient(135deg,#003D7E 0%,#6B7280 100%)' },
@@ -290,22 +337,7 @@ const INSPIRATION = [
   { id:'i8', title:'Munich → Berlin',    subtitle:'ICE direct, under 4h',       from:'munich', to:'berlin',     price:59, dur:'3h 47m', gradient:'linear-gradient(135deg,#003366 0%,#E30614 100%)' },
 ];
 
-const INIT_TICKETS = [
-  { id:'t1', ref:'EM-2024-A1B2',
-    origin:'amsterdam', destination:'brussels',
-    date:'2026-03-22', depTime:'10:20', arrTime:'12:17',
-    status:'upcoming',
-    route: ROUTES.find(r => r.id === 'r4'),
-    passengers:{ adults:1, children:0, students:0 },
-    price:49, addOn:null, purchaseDate:'2026-03-15' },
-  { id:'t2', ref:'EM-2024-C3D4',
-    origin:'paris', destination:'lyon',
-    date:'2026-03-10', depTime:'07:04', arrTime:'09:02',
-    status:'completed',
-    route: ROUTES.find(r => r.id === 'r8'),
-    passengers:{ adults:2, children:0, students:0 },
-    price:78, addOn:null, purchaseDate:'2026-03-05' },
-];
+const INIT_TICKETS = [];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const fmtDur = mins => {
@@ -502,12 +534,14 @@ function HomeScreen({ appState, dispatch }) {
   const doSearch = (from, to) => {
     if (!from || !to) return;
     dispatch({
-      type:       'SEARCH',
-      from:       resolveCityName(from),
-      to:         resolveCityName(to),
-      fromCoords: fromCoords ?? null,
-      toCoords:   toCoords   ?? null,
-      date:       dateVal,
+      type:        'SEARCH',
+      from:        resolveCityName(from),
+      to:          resolveCityName(to),
+      fromLabel:   from,
+      toLabel:     to,
+      fromCoords:  fromCoords ?? null,
+      toCoords:    toCoords   ?? null,
+      date:        dateVal,
     });
   };
 
@@ -677,7 +711,9 @@ function ResultsScreen({ appState, dispatch }) {
   const [liveRoutes, setLiveRoutes] = useState([]);
   const [loading, setLoading]     = useState(false);
 
-  const { searchFrom, searchTo, searchDate, fromCoords, toCoords } = appState;
+  const { searchFrom, searchTo, searchFromLabel, searchToLabel, searchDate, fromCoords, toCoords } = appState;
+  const displayFrom = searchFromLabel || searchFrom;
+  const displayTo   = searchToLabel   || searchTo;
 
   // ── Live API fetch ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -696,7 +732,21 @@ function ResultsScreen({ appState, dispatch }) {
   // ── Mock routes (always available) ───────────────────────────────────────
   const fromCity   = getCityByName(searchFrom);
   const toCity     = getCityByName(searchTo);
-  const mockRoutes = ROUTES.filter(r => r.origin === fromCity?.id && r.destination === toCity?.id);
+  const mockRoutes = ROUTES.filter(r => {
+    if (r.origin !== fromCity?.id || r.destination !== toCity?.id) return false;
+    // For in-city routes (origin === destination) we must also check direction,
+    // otherwise both Malpensa→VC and VC→Malpensa would appear simultaneously.
+    if (r.origin === r.destination) {
+      const fromLabel = (searchFromLabel || searchFrom).toLowerCase();
+      // If the search is just the city name (no specific location), show all directions
+      if (fromLabel.trim() === (fromCity?.name || '').toLowerCase()) return true;
+      // Otherwise match the route's first-leg departure against the "from" label.
+      // Uses words longer than 3 chars to avoid false hits on short tokens like "T1".
+      const firstFromWords = r.legs[0].from.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      return firstFromWords.some(w => fromLabel.includes(w));
+    }
+    return true;
+  });
 
   // ── Sort (cheapest puts null prices last) ────────────────────────────────
   const sortFn = (a, b) => {
@@ -816,10 +866,10 @@ function ResultsScreen({ appState, dispatch }) {
           className="flex items-center gap-1 text-xs mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
           <ChevronRight size={14} className="rotate-180" /> {t('back')}
         </button>
-        <div className="flex items-center gap-2">
-          <h1 className="text-white font-bold text-lg">{searchFrom}</h1>
-          <ArrowRight size={16} color="rgba(255,255,255,0.6)" />
-          <h1 className="text-white font-bold text-lg">{searchTo}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-white font-bold text-base leading-snug">{displayFrom}</h1>
+          <ArrowRight size={16} color="rgba(255,255,255,0.6)" className="flex-shrink-0" />
+          <h1 className="text-white font-bold text-base leading-snug">{displayTo}</h1>
         </div>
         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
           {totalCount} {t('routes')} · {formatSearchDate(searchDate, t)}
@@ -900,10 +950,12 @@ function ResultsScreen({ appState, dispatch }) {
 function DetailScreen({ appState, dispatch }) {
   const { t } = useTranslation();
   const [addOn, setAddOn] = useState(false);
-  const { selectedRoute, searchFrom, searchTo } = appState;
+  const { selectedRoute, searchFrom, searchTo, searchFromLabel, searchToLabel } = appState;
   const route = selectedRoute;
   if (!route) return null;
 
+  const displayFrom = searchFromLabel || searchFrom;
+  const displayTo   = searchToLabel   || searchTo;
   const destCity   = getCityByName(searchTo);
   const transitPass = destCity?.transitPass;
   const total = route.totalPrice + (addOn && transitPass ? transitPass.price : 0);
@@ -915,7 +967,7 @@ function DetailScreen({ appState, dispatch }) {
           className="flex items-center gap-1 text-xs mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
           <ChevronRight size={14} className="rotate-180" /> {t('back_to_results')}
         </button>
-        <h1 className="text-white font-bold text-lg">{searchFrom} → {searchTo}</h1>
+        <h1 className="text-white font-bold text-base leading-snug">{displayFrom} → {displayTo}</h1>
         <div className="flex items-center gap-3 mt-2">
           <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{fmtDur(route.totalDur)}</span>
           <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
@@ -1021,7 +1073,8 @@ function CheckoutScreen({ appState, dispatch }) {
 
   const totalPax  = pax.adults + pax.children + pax.students;
   const finalPrice = ((checkoutPrice || 0) * (totalPax || 1)).toFixed(2);
-  const bookingRef = 'EM-' + Math.random().toString(36).toUpperCase().slice(2, 10);
+  // Stable ref — must not regenerate on re-render (otherwise confirmed ref ≠ displayed ref)
+  const [bookingRef] = useState(() => 'EM-' + Math.random().toString(36).toUpperCase().slice(2, 10));
 
   const PaxRow = ({ label, sub, field }) => (
     <div className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: C.border }}>
@@ -1077,7 +1130,7 @@ function CheckoutScreen({ appState, dispatch }) {
             </div>
           </div>
 
-          <button onClick={() => dispatch({ type:'CONFIRM_BOOKING', ref:bookingRef, passengers:pax, price:parseFloat(finalPrice), addOn:checkoutAddOn })}
+          <button onClick={() => dispatch({ type:'GOTO', screen:'wallet' })}
             className="w-full py-3.5 rounded-xl font-bold text-sm text-white mb-2" style={{ background: C.primary }}>
             {t('view_ticket_wallet')}
           </button>
@@ -1213,7 +1266,14 @@ function CheckoutScreen({ appState, dispatch }) {
             </span>
             <span className="text-lg font-bold" style={{ color: C.text }}>€{finalPrice}</span>
           </div>
-          <button onClick={() => dispatch({ type:'NEXT_STEP' })}
+          <button onClick={() => {
+              if (checkoutStep === 3) {
+                // Payment confirmed → save ticket immediately, then show confirmation
+                dispatch({ type:'CONFIRM_BOOKING', ref:bookingRef, passengers:pax, price:parseFloat(finalPrice), addOn:checkoutAddOn });
+              } else {
+                dispatch({ type:'NEXT_STEP' });
+              }
+            }}
             className="w-full py-3.5 rounded-xl text-base font-bold"
             style={{ background: C.accent, color: C.primary }}>
             {checkoutStep === 1 ? t('continue_btn') : checkoutStep === 2 ? t('continue_to_payment') : `${t('pay_btn')} €${finalPrice}`}
@@ -1238,13 +1298,19 @@ function WalletScreen({ appState, dispatch }) {
     const isExp = expandedId === ticket.id;
     const orig  = getCityById(ticket.origin);
     const dest  = getCityById(ticket.destination);
+    // Use stored labels if available; fall back to city name
+    const displayFrom = ticket.fromLabel || orig?.name || ticket.origin;
+    const displayTo   = ticket.toLabel   || dest?.name || ticket.destination;
     return (
       <div className="bg-white rounded-2xl overflow-hidden fade-in" style={{ boxShadow:'0 2px 12px rgba(0,0,0,0.08)' }}>
         <button className="w-full text-left p-4" onClick={() => setExpandedId(isExp ? null : ticket.id)}>
           <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-base font-bold mb-1" style={{ color: C.text }}>
-                {orig?.emoji} {orig?.name} → {dest?.emoji} {dest?.name}
+            <div className="flex-1 pr-2">
+              <p className="text-sm font-bold mb-1 leading-snug" style={{ color: C.text }}>
+                {orig?.emoji} {displayFrom}
+              </p>
+              <p className="text-sm font-bold mb-1 leading-snug" style={{ color: C.text }}>
+                → {dest?.emoji} {displayTo}
               </p>
               <p className="text-xs" style={{ color: C.muted }}>{ticket.date} · {ticket.depTime}–{ticket.arrTime}</p>
               <p className="text-xs font-mono mt-0.5" style={{ color: C.muted }}>{ticket.ref}</p>
@@ -1323,167 +1389,188 @@ function WalletScreen({ appState, dispatch }) {
   );
 }
 
+// ─── MAP CONFIGURATIONS (one per tracked journey) ────────────────────────────
+const MAP_CONFIGS = {
+  mxp_vc: {
+    chipLabel: '✈️ Malpensa → Villaggio Cavour',
+    title:     '✈️ Malpensa → Villaggio Cavour',
+    alert:     { msg: 'Malpensa Express on time', detail: 'Platform 1 · Next stop: Saronno (~8 min)' },
+    activeLeg: 0,
+    initProgress: 22,
+    waypoints: [
+      { coords: [45.6227,  8.7282], label: 'Malpensa T1',       color: C.success },
+      { coords: [45.6279,  9.0379], label: 'Saronno',           color: '#007AB3' },
+      { coords: [45.4862,  9.2037], label: 'Milano Centrale',   color: '#007AB3' },
+      { coords: [45.4670,  9.0222], label: 'Villaggio Cavour 🌿', color: C.accent },
+    ],
+    legs: [
+      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno',          nextIn: 8  },
+      { op: 'atm',     vehicle: 'Bus 78',           from: 2, to: 3, status: 'upcoming', delay: 0 },
+    ],
+  },
+  muc_mil: {
+    chipLabel: '🇩🇪 Munich → Milan 🇮🇹',
+    title:     '🇩🇪 Munich → Milan 🇮🇹',
+    alert:     { msg: '+8 min delay on EC 89 (DB)', detail: 'Transfer at Verona still possible (21 min buffer)' },
+    activeLeg: 1,
+    initProgress: 18,
+    waypoints: [
+      { coords: [48.1391, 11.5380], label: 'Westendstr.',     color: C.success },
+      { coords: [48.1403, 11.5600], label: 'München Hbf',     color: '#0B6E4F' },
+      { coords: [47.2632, 11.4010], label: 'Innsbruck',       color: '#E2001A' },
+      { coords: [45.4289, 10.9822], label: 'Verona PN',       color: '#006940' },
+      { coords: [45.4861,  9.2043], label: 'Milano Centrale', color: '#D52B1E' },
+      { coords: [45.4500,  9.1693], label: 'Porta Genova',    color: C.accent  },
+    ],
+    legs: [
+      { op: 'mvg',  vehicle: 'U5',               from: 0, to: 1, status: 'completed', delay: 0 },
+      { op: 'db',   vehicle: 'EC 89',            from: 1, to: 3, status: 'active',    delay: 8, nextStop: 'Kufstein', nextIn: 18 },
+      { op: 'trit', vehicle: 'RV 2161',          from: 3, to: 4, status: 'upcoming',  delay: 0 },
+      { op: 'atm',  vehicle: 'M2',               from: 4, to: 5, status: 'upcoming',  delay: 0 },
+    ],
+  },
+};
+
+const getMapConfig = (ticket) => {
+  if (!ticket) return MAP_CONFIGS.mxp_vc;
+  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_vc;
+  if (ticket.origin === 'munich' && ticket.destination === 'milan') return MAP_CONFIGS.muc_mil;
+  return MAP_CONFIGS.mxp_vc;
+};
+
 // ─── SCREEN: MAP ──────────────────────────────────────────────────────────────
 function MapScreen({ appState, dispatch }) {
   const { t } = useTranslation();
-  const [progress, setProgress] = useState(18);
-  const activeLeg = 1; // 0-based, EC 89 is the active leg
 
-  // Real geo coordinates for Munich → Milan (route r12)
-  const WAYPOINTS = [
-    { coords: [48.1391, 11.5380], label: 'Westendstr.',    color: C.success  },
-    { coords: [48.1403, 11.5600], label: 'München Hbf',    color: '#0B6E4F'  },
-    { coords: [47.2632, 11.4010], label: 'Innsbruck',      color: '#E2001A'  },
-    { coords: [45.4289, 10.9822], label: 'Verona PN',      color: '#006940'  },
-    { coords: [45.4861,  9.2043], label: 'Milano Centrale',color: '#D52B1E'  },
-    { coords: [45.4500,  9.1693], label: 'Porta Genova',   color: C.accent   },
-  ];
+  // Ticket switcher
+  const upcomingTickets = appState.tickets.filter(tk => tk.status !== 'completed');
+  const [trackedId, setTrackedId] = useState(upcomingTickets[0]?.id ?? null);
+  const tracked = upcomingTickets.find(tk => tk.id === trackedId) ?? upcomingTickets[0];
+  const cfg = getMapConfig(tracked);
 
-  // The journey legs for this map (matches r12 "Fastest" route)
-  const MAP_LEGS = [
-    { op: 'mvg',  vehicle: 'U5',      from: 0, to: 1, status: 'completed', delay: 0 },
-    { op: 'db',   vehicle: 'EC 89',   from: 1, to: 3, status: 'active',    delay: 8, nextStop: 'Kufstein', nextIn: 18 },
-    { op: 'trit', vehicle: 'RV 2161', from: 3, to: 4, status: 'upcoming',  delay: 0 },
-    { op: 'atm',  vehicle: 'M2',      from: 4, to: 5, status: 'upcoming',  delay: 0 },
-  ];
-
+  // Progress animation — resets when ticket changes
+  const [progress, setProgress] = useState(cfg.initProgress);
+  useEffect(() => { setProgress(cfg.initProgress); }, [trackedId]);
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress(p => {
-        if (p >= 95) return 95;
-        return +(p + 0.15).toFixed(2);
-      });
-    }, 400);
+    const timer = setInterval(() => setProgress(p => p >= 95 ? 95 : +(p + 0.15).toFixed(2)), 400);
     return () => clearInterval(timer);
   }, []);
 
-  // Interpolate live vehicle position along the active leg using real coords
+  const { waypoints: WAYPOINTS, legs: MAP_LEGS, activeLeg, title, alert: alertCfg } = cfg;
   const activeMapLeg = MAP_LEGS[activeLeg];
-  const legPct = Math.min(1, progress / 55); // 55% overall ≈ end of EC 89 leg
+
+  // Interpolate vehicle position
+  const legPct = Math.min(1, progress / 100);
   const interpPoints = [];
   for (let i = activeMapLeg.from; i <= activeMapLeg.to; i++) interpPoints.push(WAYPOINTS[i].coords);
-  const totalSegDist = interpPoints.length - 1;
-  const segIdx = Math.min(Math.floor(legPct * totalSegDist), totalSegDist - 1);
-  const segPct = (legPct * totalSegDist) - segIdx;
+  const totalSeg = interpPoints.length - 1;
+  const segIdx   = Math.min(Math.floor(legPct * totalSeg), totalSeg - 1);
+  const segPct   = legPct * totalSeg - segIdx;
   const c1 = interpPoints[segIdx];
   const c2 = interpPoints[Math.min(segIdx + 1, interpPoints.length - 1)];
-  const vehiclePos = [
-    c1[0] + (c2[0] - c1[0]) * segPct,
-    c1[1] + (c2[1] - c1[1]) * segPct,
-  ];
+  const vehiclePos = [c1[0] + (c2[0] - c1[0]) * segPct, c1[1] + (c2[1] - c1[1]) * segPct];
 
-  // Build per-leg polylines with colour by status
   const polylines = MAP_LEGS.map(leg => ({
     pts:    Array.from({ length: leg.to - leg.from + 1 }, (_, k) => WAYPOINTS[leg.from + k].coords),
     color:  leg.status === 'completed' ? C.success : leg.status === 'active' ? C.primary : C.muted,
     dashed: leg.status === 'upcoming',
     weight: leg.status === 'active' ? 4 : 3,
-    leg,
   }));
-
-  const mapBounds = WAYPOINTS.map(w => w.coords);
+  const mapBounds  = WAYPOINTS.map(w => w.coords);
+  const isDelay    = alertCfg.msg.startsWith('+');
 
   return (
     <div className="flex flex-col flex-1 pb-20 fade-in">
       {/* Header */}
       <div style={{ background: C.primary }} className="px-5 pt-10 pb-4 rounded-b-3xl">
-        <h1 className="text-white font-bold text-lg">🇩🇪 Munich → Milan 🇮🇹</h1>
+        <h1 className="text-white font-bold text-lg">{title}</h1>
         <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{t('live_nav_subtitle')}</p>
       </div>
 
-      {/* Disruption alert */}
+      {/* Ticket switcher chips */}
+      {upcomingTickets.length > 1 && (
+        <div className="flex gap-2 px-4 pt-3 overflow-x-auto">
+          {upcomingTickets.map(tk => {
+            const tcfg   = getMapConfig(tk);
+            const active = tk.id === tracked?.id;
+            return (
+              <button key={tk.id} onClick={() => setTrackedId(tk.id)}
+                className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                style={active
+                  ? { background: C.accent, color: C.primary }
+                  : { background: 'white',  color: C.muted, border: `1px solid ${C.border}` }}>
+                {tcfg.chipLabel}
+                <span className="ml-1.5 opacity-60">{tk.date.slice(5).replace('-', '/')}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Alert banner */}
       <div className="mx-4 mt-3 p-3 rounded-2xl flex items-start gap-3"
-        style={{ background:'#FFF3CD', border:'1px solid #FFE082' }}>
-        <AlertTriangle size={16} color={C.warning} className="flex-shrink-0 mt-0.5" />
+        style={{ background: isDelay ? '#FFF3CD' : '#E8F5E9', border: `1px solid ${isDelay ? '#FFE082' : '#A5D6A7'}` }}>
+        <AlertTriangle size={16} color={isDelay ? C.warning : C.success} className="flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-xs font-bold" style={{ color:'#856404' }}>+8 min delay on EC 89 (DB)</p>
-          <p className="text-xs" style={{ color:'#856404' }}>Transfer at Verona still possible (29 → 21 min buffer)</p>
+          <p className="text-xs font-bold" style={{ color: isDelay ? '#856404' : '#2E7D32' }}>{alertCfg.msg}</p>
+          <p className="text-xs" style={{ color: isDelay ? '#856404' : '#2E7D32' }}>{alertCfg.detail}</p>
         </div>
       </div>
 
-      {/* Real interactive map */}
-      <div className="mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg" style={{ height: 280 }}>
-        <MapContainer
-          bounds={mapBounds}
-          boundsOptions={{ padding: [32, 32] }}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
-        >
+      {/* Map */}
+      <div className="mx-4 mt-3 rounded-3xl overflow-hidden shadow-lg" style={{ height: 255 }}>
+        <MapContainer key={trackedId} bounds={mapBounds} boundsOptions={{ padding: [32, 32] }}
+          style={{ height: '100%', width: '100%' }} zoomControl={false} attributionControl={false}>
           <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-          {/* Route polylines coloured by leg status */}
           {polylines.map((pl, i) => (
-            <Polyline
-              key={i}
-              positions={pl.pts}
-              pathOptions={{
-                color:       pl.color,
-                weight:      pl.weight,
-                opacity:     pl.dashed ? 0.5 : 1,
-                dashArray:   pl.dashed ? '10 7' : undefined,
-              }}
-            />
+            <Polyline key={i} positions={pl.pts}
+              pathOptions={{ color: pl.color, weight: pl.weight, opacity: pl.dashed ? 0.5 : 1, dashArray: pl.dashed ? '10 7' : undefined }} />
           ))}
-
-          {/* Waypoint circle markers */}
           {WAYPOINTS.map((wp, i) => {
             const isStart  = i === 0;
             const isEnd    = i === WAYPOINTS.length - 1;
             const isPassed = i <= activeMapLeg.from;
             return (
-              <CircleMarker
-                key={i}
-                center={wp.coords}
-                radius={isStart || isEnd ? 9 : 6}
-                pathOptions={{
-                  fillColor:   isPassed ? C.success : isEnd ? C.accent : 'white',
-                  fillOpacity: 1,
-                  color:       isPassed ? C.success : wp.color,
-                  weight:      2.5,
-                }}
-              >
+              <CircleMarker key={i} center={wp.coords} radius={isStart || isEnd ? 9 : 6}
+                pathOptions={{ fillColor: isPassed ? C.success : isEnd ? C.accent : 'white', fillOpacity: 1, color: isPassed ? C.success : wp.color, weight: 2.5 }}>
                 <Popup>
                   <strong>{wp.label}</strong>
                   {isStart && <div style={{ color: C.success }}>🟢 Journey start</div>}
-                  {isEnd   && <div style={{ color: C.accent  }}>🏁 Final destination</div>}
+                  {isEnd   && <div style={{ color: C.accent  }}>🏁 Destination</div>}
                 </Popup>
               </CircleMarker>
             );
           })}
-
-          {/* Live vehicle position marker */}
-          <CircleMarker
-            center={vehiclePos}
-            radius={11}
-            pathOptions={{ fillColor: C.success, fillOpacity: 1, color: 'white', weight: 2.5 }}
-          >
-            <Popup><strong>EC 89</strong> · In transit<br />Next: Kufstein (~18 min)</Popup>
+          <CircleMarker center={vehiclePos} radius={11}
+            pathOptions={{ fillColor: C.success, fillOpacity: 1, color: 'white', weight: 2.5 }}>
+            <Popup><strong>{activeMapLeg.vehicle}</strong> · In transit<br />Next: {activeMapLeg.nextStop} (~{activeMapLeg.nextIn} min)</Popup>
           </CircleMarker>
         </MapContainer>
       </div>
 
-      {/* Journey progress timeline */}
-      <div className="mx-4 mt-3 overflow-y-auto scrollable" style={{ maxHeight: 220 }}>
-        {/* Active leg info card */}
-        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
+      {/* Progress + leg list */}
+      <div className="mx-4 mt-3 overflow-y-auto scrollable space-y-3 pb-2" style={{ maxHeight: 195 }}>
+        {/* Active leg card */}
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ background: C.success, animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-              <span className="text-sm font-bold" style={{ color: C.text }}>EC 89 — {t('live_tracking')}</span>
+              <span className="text-sm font-bold" style={{ color: C.text }}>{activeMapLeg.vehicle} — {t('live_tracking')}</span>
             </div>
-            <OperatorBadge opId="db" />
+            <OperatorBadge opId={activeMapLeg.op} />
           </div>
           <div className="flex gap-4 flex-wrap">
             <div>
               <p className="text-xs" style={{ color: C.muted }}>{t('next_stop')}</p>
-              <p className="text-sm font-semibold" style={{ color: C.text }}>Kufstein</p>
-              <p className="text-xs" style={{ color: C.muted }}>in ~18 min</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>{activeMapLeg.nextStop}</p>
+              <p className="text-xs" style={{ color: C.muted }}>in ~{activeMapLeg.nextIn} min</p>
             </div>
             <div>
               <p className="text-xs" style={{ color: C.muted }}>{t('leg_arrival')}</p>
-              <p className="text-sm font-semibold" style={{ color: C.text }}>Verona PN</p>
-              <p className="text-xs font-semibold" style={{ color: C.warning }}>~12:49 (+8 min)</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>{WAYPOINTS[activeMapLeg.to].label}</p>
+              {activeMapLeg.delay > 0
+                ? <p className="text-xs font-semibold" style={{ color: C.warning }}>+{activeMapLeg.delay} min</p>
+                : <p className="text-xs" style={{ color: C.success }}>On time</p>}
             </div>
             <div className="ml-auto text-right">
               <p className="text-xs" style={{ color: C.muted }}>{t('overall')}</p>
@@ -1495,43 +1582,33 @@ function MapScreen({ appState, dispatch }) {
           </div>
         </div>
 
-        {/* Leg-by-leg status timeline */}
+        {/* Leg timeline */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow:'0 2px 8px rgba(0,0,0,0.07)' }}>
           <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: C.muted }}>{t('journey_legs')}</p>
           {MAP_LEGS.map((leg, i) => {
-            const op = OPERATORS[leg.op];
-            const from = WAYPOINTS[leg.from];
-            const to   = WAYPOINTS[leg.to];
+            const op          = OPERATORS[leg.op];
             const isCompleted = leg.status === 'completed';
             const isActive    = leg.status === 'active';
             return (
               <div key={i} className="flex items-start gap-3 pb-3 last:pb-0">
                 <div className="flex flex-col items-center">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: isCompleted ? C.success : isActive ? op.color : C.border }}>
-                    {isCompleted ? <Check size={13} color="white" /> : <VehicleIcon type={leg.op === 'flix' ? 'bus' : (leg.op === 'mvg' || leg.op === 'atm') ? 'metro' : 'rail'} size={12} />}
+                    style={{ background: isCompleted ? C.success : isActive ? (op?.color || C.primary) : C.border }}>
+                    {isCompleted ? <Check size={13} color="white" /> : <VehicleIcon type={op?.type || 'rail'} size={12} />}
                   </div>
                   {i < MAP_LEGS.length - 1 && <div className="w-0.5 h-6 mt-1" style={{ background: isCompleted ? C.success : C.border }} />}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold" style={{ color: C.text }}>{from.label} → {to.label}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold" style={{ color: C.text }}>{WAYPOINTS[leg.from].label} → {WAYPOINTS[leg.to].label}</span>
                     {isCompleted && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.success + '15', color: C.success }}>{t('done')}</span>}
-                    {isActive && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.primary + '15', color: C.primary }}>
-                        {t('in_transit')}
-                      </span>
-                    )}
-                    {leg.delay > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.warning + '15', color: C.warning }}>
-                        +{leg.delay}m
-                      </span>
-                    )}
+                    {isActive    && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.primary + '15', color: C.primary }}>{t('in_transit')}</span>}
+                    {leg.delay > 0 && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: C.warning + '15', color: C.warning }}>+{leg.delay}m</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <OperatorBadge opId={leg.op} />
                     <span className="text-xs" style={{ color: C.muted }}>{leg.vehicle}</span>
-                    {leg.status === 'upcoming' && <span className="text-xs" style={{ color: C.muted }}>· {t('scheduled')}</span>}
+                    {!isCompleted && !isActive && <span className="text-xs" style={{ color: C.muted }}>· {t('scheduled')}</span>}
                   </div>
                 </div>
               </div>
@@ -1673,6 +1750,8 @@ const initialState = {
   screen: 'home',
   searchFrom: '',
   searchTo: '',
+  searchFromLabel: '',
+  searchToLabel: '',
   searchDate: '',
   fromCoords: null,
   toCoords: null,
@@ -1688,18 +1767,24 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'GOTO':       return { ...state, screen: action.screen };
-    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchDate: action.date || '', fromCoords: action.fromCoords || null, toCoords: action.toCoords || null };
+    case 'SEARCH':     return { ...state, screen:'results', searchFrom: action.from, searchTo: action.to, searchFromLabel: action.fromLabel || action.from, searchToLabel: action.toLabel || action.to, searchDate: action.date || '', fromCoords: action.fromCoords || null, toCoords: action.toCoords || null };
     case 'SELECT_ROUTE': return { ...state, screen:'detail', selectedRoute: action.route };
     case 'START_CHECKOUT': return { ...state, screen:'checkout', checkoutStep:1, checkoutPrice: action.price, checkoutAddOn: action.addOn };
     case 'NEXT_STEP':  return { ...state, checkoutStep: Math.min(4, state.checkoutStep + 1) };
     case 'PREV_STEP':  return { ...state, checkoutStep: Math.max(1, state.checkoutStep - 1) };
     case 'CONFIRM_BOOKING': {
       const route = state.selectedRoute;
+      // Prefer the route's own origin/destination so in-city routes (origin===destination)
+      // work correctly; fall back to city-name resolution, then generic defaults.
+      const originId = route?.origin      || getCityByName(state.searchFrom)?.id || 'milan';
+      const destId   = route?.destination || getCityByName(state.searchTo)?.id   || 'milan';
       const newTicket = {
         id: 't' + Date.now(),
         ref: action.ref,
-        origin:      getCityByName(state.searchFrom)?.id || 'berlin',
-        destination: getCityByName(state.searchTo)?.id   || 'paris',
+        origin:      originId,
+        destination: destId,
+        fromLabel:   state.searchFromLabel || state.searchFrom,
+        toLabel:     state.searchToLabel   || state.searchTo,
         date:        new Date().toISOString().slice(0, 10),
         depTime:     route?.legs[0]?.dep || '09:00',
         arrTime:     route?.legs[route.legs.length - 1]?.arr || '17:00',
@@ -1710,7 +1795,9 @@ function reducer(state, action) {
         addOn:       action.addOn,
         purchaseDate: new Date().toISOString().slice(0, 10),
       };
-      return { ...state, screen:'wallet', tickets: [newTicket, ...state.tickets], checkoutStep:1 };
+      // Stay on checkout screen at step 4 (confirmation UI) — ticket is already saved.
+      // Buttons on step 4 navigate to wallet or home via GOTO.
+      return { ...state, screen:'checkout', checkoutStep: 4, tickets: [newTicket, ...state.tickets] };
     }
     case 'SET_LANGUAGE': return { ...state, language: action.language };
     default: return state;

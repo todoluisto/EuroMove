@@ -313,7 +313,7 @@ const MILAN_ROUTES = [
   { id:'rmx_vi1', origin:'milan', destination:'milan', label:'Recommended',
     legs:[
       { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',  to:'Milano Cadorna',   dep:'15:25', arr:'16:02', dur:37, platform:'1' },
-      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.', to:'Porta Venezia',    dep:'16:10', arr:'16:22', dur:12, platform:'M1 rossa · dir. Sesto 1° Maggio' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.', to:'Villa Invernizzi', dep:'16:10', arr:'16:22', dur:12, platform:'M1 rossa · scendi a Porta Venezia' },
     ], totalDur:57, totalPrice:15.00, transfers:1 },
 
   { id:'rmx_vi2', origin:'milan', destination:'milan', label:'Via Centrale',

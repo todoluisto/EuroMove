@@ -309,6 +309,25 @@ const MILAN_ROUTES = [
       { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:35', arr:'16:54', dur:19, platform:'Via Vitruvio' },
     ], totalDur:84, totalPrice:8.40, transfers:1 },
 
+  // ── Arrival: Malpensa → Villa Invernizzi (Flamingo Garden, Porta Venezia) ──
+  { id:'rmx_vi1', origin:'milan', destination:'milan', label:'Recommended',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',  to:'Milano Cadorna',   dep:'15:25', arr:'16:02', dur:37, platform:'1' },
+      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.', to:'Porta Venezia',    dep:'16:10', arr:'16:22', dur:12, platform:'M1 rossa · dir. Sesto 1° Maggio' },
+    ], totalDur:57, totalPrice:15.00, transfers:1 },
+
+  { id:'rmx_vi2', origin:'milan', destination:'milan', label:'Via Centrale',
+    legs:[
+      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',    to:'Milano Centrale',  dep:'15:05', arr:'15:56', dur:51, platform:'1' },
+      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'Milano Centrale', to:'Villa Invernizzi', dep:'16:05', arr:'16:23', dur:18, platform:'Via Vitruvio' },
+    ], totalDur:78, totalPrice:13.90, transfers:1 },
+
+  { id:'rmx_vi3', origin:'milan', destination:'milan', label:'Budget',
+    legs:[
+      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',    to:'Milano Centrale',  dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
+      { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'Milano Centrale', to:'Villa Invernizzi', dep:'16:35', arr:'16:53', dur:18, platform:'Via Vitruvio' },
+    ], totalDur:83, totalPrice:8.40, transfers:1 },
+
   // ── Departure: Villaggio Cavour → Malpensa ──
   { id:'rmx1r', origin:'milan', destination:'milan', label:'Malpensa Express',
     legs:[
@@ -738,12 +757,19 @@ function ResultsScreen({ appState, dispatch }) {
     // otherwise both Malpensa→VC and VC→Malpensa would appear simultaneously.
     if (r.origin === r.destination) {
       const fromLabel = (searchFromLabel || searchFrom).toLowerCase();
-      // If the search is just the city name (no specific location), show all directions
-      if (fromLabel.trim() === (fromCity?.name || '').toLowerCase()) return true;
-      // Otherwise match the route's first-leg departure against the "from" label.
-      // Uses words longer than 3 chars to avoid false hits on short tokens like "T1".
+      const toLabel   = (searchToLabel   || searchTo).toLowerCase();
+      const cityName  = (fromCity?.name || '').toLowerCase();
+      // If both inputs are just the city name, show all in-city routes
+      if (fromLabel.trim() === cityName && toLabel.trim() === cityName) return true;
+      // Match first-leg departure against "from" label
       const firstFromWords = r.legs[0].from.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      return firstFromWords.some(w => fromLabel.includes(w));
+      const fromMatch = fromLabel.trim() === cityName ||
+                        firstFromWords.some(w => fromLabel.includes(w));
+      // Match last-leg destination against "to" label (distinguishes e.g. VC vs VI routes)
+      const lastToWords = r.legs[r.legs.length - 1].to.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const toMatch   = toLabel.trim() === cityName ||
+                        lastToWords.some(w => toLabel.includes(w));
+      return fromMatch && toMatch;
     }
     return true;
   });

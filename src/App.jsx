@@ -94,8 +94,6 @@ const LOCATIONS = [
 
   // ── Milan ───
   { id: 'l_mxp',       label: 'Milan Malpensa Airport (MXP)',                      short: 'Malpensa Airport',   city: 'milan', type: 'airport',    emoji: '✈️', lat: 45.6227, lon:  8.7282 },
-  { id: 'l_vc',        label: 'Villaggio Cavour, Settimo Milanese',               short: 'Villaggio Cavour',   city: 'milan', type: 'district',   emoji: '🌿', lat: 45.4670, lon:  9.0222 },
-  { id: 'l_vc_addr',   label: 'Via Guglielmo Marconi 8, Settimo Milanese',        short: 'Via G. Marconi 8',   city: 'milan', type: 'address',    emoji: '📍', lat: 45.4670, lon:  9.0222 },
   { id: 'l_flamingos', label: 'Villa Invernizzi – Flamingo Garden, Milan',        short: 'Villa Invernizzi',   city: 'milan', type: 'attraction', emoji: '🦩', lat: 45.4700, lon:  9.2025 },
   { id: 'l_san_lor',   label: 'Colonne di San Lorenzo, Milan',                    short: 'Colonne di S.Lorenzo', city: 'milan', type: 'attraction', emoji: '🏛️', lat: 45.4582, lon:  9.1810 },
   { id: 'l_navigli',   label: 'Navigli, Milan',                                   short: 'Navigli',            city: 'milan', type: 'district',   emoji: '🌊', lat: 45.4513, lon:  9.1734 },
@@ -287,28 +285,8 @@ const PISA_ROUTES = [
     ], totalDur:20, totalPrice:2.70, transfers:0 },
 ];
 
-// ─── MILAN IN-CITY ROUTES (Malpensa ↔ Porta Venezia / city centre) ───────────
+// ─── MILAN IN-CITY ROUTES (Malpensa → Villa Invernizzi) ─────────────────────
 const MILAN_ROUTES = [
-  // ── Arrival: Malpensa → Villaggio Cavour (Settimo Milanese) ──
-  { id:'rmx1', origin:'milan', destination:'milan', label:'Malpensa Express',
-    legs:[
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:05', arr:'15:56', dur:51, platform:'1' },
-      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:05', arr:'16:24', dur:19, platform:'Via Vitruvio' },
-    ], totalDur:79, totalPrice:13.90, transfers:1 },
-
-  { id:'rmx2', origin:'milan', destination:'milan', label:'Via Cadorna',
-    legs:[
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Malpensa T1',       to:'Milano Cadorna',     dep:'15:25', arr:'16:02', dur:37, platform:'1' },
-      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Cadorna F.N.',       to:'Rho Fiera',         dep:'16:10', arr:'16:28', dur:18, platform:'M1 rossa' },
-      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Rho Fiera',          to:'Villaggio Cavour',  dep:'16:35', arr:'16:43', dur:8,  platform:'Fermata Rho' },
-    ], totalDur:78, totalPrice:15.00, transfers:2 },
-
-  { id:'rmx3', origin:'milan', destination:'milan', label:'Budget Bus',
-    legs:[
-      { operator:'flix',    vehicle:'Terravision',      type:'bus',   from:'Malpensa T1',       to:'Milano Centrale',    dep:'15:30', arr:'16:25', dur:55, platform:'Uscita 4' },
-      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Milano Centrale',   to:'Villaggio Cavour',   dep:'16:35', arr:'16:54', dur:19, platform:'Via Vitruvio' },
-    ], totalDur:84, totalPrice:8.40, transfers:1 },
-
   // ── Arrival: Malpensa → Villa Invernizzi (Flamingo Garden, Porta Venezia) ──
   { id:'rmx_vi1', origin:'milan', destination:'milan', label:'Recommended',
     legs:[
@@ -328,19 +306,6 @@ const MILAN_ROUTES = [
       { operator:'atm',     vehicle:'Tram 9',           type:'metro', from:'Milano Centrale', to:'Villa Invernizzi', dep:'16:35', arr:'16:53', dur:18, platform:'Via Vitruvio' },
     ], totalDur:83, totalPrice:8.40, transfers:1 },
 
-  // ── Departure: Villaggio Cavour → Malpensa ──
-  { id:'rmx1r', origin:'milan', destination:'milan', label:'Malpensa Express',
-    legs:[
-      { operator:'atm',     vehicle:'Bus 78',           type:'bus',   from:'Villaggio Cavour',  to:'Milano Centrale',    dep:'09:00', arr:'09:19', dur:19, platform:'Via G. Marconi' },
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Centrale',   to:'Malpensa T1',        dep:'09:25', arr:'10:16', dur:51, platform:'2' },
-    ], totalDur:76, totalPrice:13.90, transfers:1 },
-
-  { id:'rmx2r', origin:'milan', destination:'milan', label:'Via Cadorna',
-    legs:[
-      { operator:'atm',     vehicle:'Bus Z214',         type:'bus',   from:'Villaggio Cavour',  to:'Rho Fiera',          dep:'08:30', arr:'08:38', dur:8,  platform:'Via G. Marconi' },
-      { operator:'atm',     vehicle:'M1',               type:'metro', from:'Rho Fiera',          to:'Cadorna F.N.',       dep:'08:45', arr:'09:03', dur:18, platform:'M1 rossa' },
-      { operator:'trenord', vehicle:'Malpensa Express', type:'rail',  from:'Milano Cadorna',    to:'Malpensa T1',        dep:'09:10', arr:'09:47', dur:37, platform:'1' },
-    ], totalDur:77, totalPrice:15.00, transfers:2 },
 ];
 
 const ROUTES = [...BASE_ROUTES, ...generateReverseRoutes(BASE_ROUTES), ...PISA_ROUTES, ...MILAN_ROUTES];
@@ -1417,21 +1382,21 @@ function WalletScreen({ appState, dispatch }) {
 
 // ─── MAP CONFIGURATIONS (one per tracked journey) ────────────────────────────
 const MAP_CONFIGS = {
-  mxp_vc: {
-    chipLabel: '✈️ Malpensa → Villaggio Cavour',
-    title:     '✈️ Malpensa → Villaggio Cavour',
+  mxp_vi: {
+    chipLabel: '✈️ Malpensa → Villa Invernizzi',
+    title:     '✈️ Malpensa → Villa Invernizzi 🦩',
     alert:     { msg: 'Malpensa Express on time', detail: 'Platform 1 · Next stop: Saronno (~8 min)' },
     activeLeg: 0,
     initProgress: 22,
     waypoints: [
       { coords: [45.6227,  8.7282], label: 'Malpensa T1',       color: C.success },
       { coords: [45.6279,  9.0379], label: 'Saronno',           color: '#007AB3' },
-      { coords: [45.4862,  9.2037], label: 'Milano Centrale',   color: '#007AB3' },
-      { coords: [45.4670,  9.0222], label: 'Villaggio Cavour 🌿', color: C.accent },
+      { coords: [45.4654,  9.1866], label: 'Milano Cadorna',    color: '#007AB3' },
+      { coords: [45.4700,  9.2025], label: 'Villa Invernizzi 🦩', color: C.accent },
     ],
     legs: [
-      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno',          nextIn: 8  },
-      { op: 'atm',     vehicle: 'Bus 78',           from: 2, to: 3, status: 'upcoming', delay: 0 },
+      { op: 'trenord', vehicle: 'Malpensa Express', from: 0, to: 2, status: 'active',   delay: 0, nextStop: 'Saronno', nextIn: 8 },
+      { op: 'atm',     vehicle: 'M1',               from: 2, to: 3, status: 'upcoming', delay: 0 },
     ],
   },
   muc_mil: {
@@ -1458,10 +1423,10 @@ const MAP_CONFIGS = {
 };
 
 const getMapConfig = (ticket) => {
-  if (!ticket) return MAP_CONFIGS.mxp_vc;
-  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_vc;
+  if (!ticket) return MAP_CONFIGS.mxp_vi;
+  if (ticket.route?.id?.startsWith('rmx')) return MAP_CONFIGS.mxp_vi;
   if (ticket.origin === 'munich' && ticket.destination === 'milan') return MAP_CONFIGS.muc_mil;
-  return MAP_CONFIGS.mxp_vc;
+  return MAP_CONFIGS.mxp_vi;
 };
 
 // ─── SCREEN: MAP ──────────────────────────────────────────────────────────────

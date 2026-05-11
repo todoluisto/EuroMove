@@ -1062,8 +1062,13 @@ function CheckoutScreen({ appState, dispatch }) {
   const [pax, setPax] = useState({ adults:1, children:0, students:0 });
   const route = selectedRoute;
 
-  const totalPax  = pax.adults + pax.children + pax.students;
-  const finalPrice = ((checkoutPrice || 0) * (totalPax || 1)).toFixed(2);
+  const totalPax   = pax.adults + pax.children + pax.students;
+  const SERVICE_FEE_RATE = 0.03;
+  const basePrice  = (checkoutPrice || 0) * (totalPax || 1);
+  const addOnPrice = checkoutAddOn ? checkoutAddOn.price : 0;
+  const subtotal   = basePrice + addOnPrice;
+  const serviceFee = parseFloat((subtotal * SERVICE_FEE_RATE).toFixed(2));
+  const finalPrice = (subtotal + serviceFee).toFixed(2);
   // Stable ref — must not regenerate on re-render (otherwise confirmed ref ≠ displayed ref)
   const [bookingRef] = useState(() => 'EM-' + Math.random().toString(36).toUpperCase().slice(2, 10));
 
@@ -1115,7 +1120,14 @@ function CheckoutScreen({ appState, dispatch }) {
                 <span className="text-xs" style={{ color: C.muted }}>{checkoutAddOn.name}</span>
               </div>
             )}
-            <div className="flex justify-between mt-3 pt-3 border-t" style={{ borderColor: C.border }}>
+            <div className="flex justify-between py-1.5 border-t mt-1" style={{ borderColor: C.border }}>
+              <span className="text-xs flex items-center gap-1" style={{ color: C.muted }}>
+                EuroMove {t('service_fee')}
+                <span className="text-xs px-1 rounded" style={{ background: C.accent + '20', color: C.accent }}>3%</span>
+              </span>
+              <span className="text-xs font-medium" style={{ color: C.muted }}>€{serviceFee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between mt-2 pt-2 border-t" style={{ borderColor: C.border }}>
               <span className="text-sm font-semibold" style={{ color: C.text }}>{t('total_paid')}</span>
               <span className="text-sm font-bold" style={{ color: C.accent }}>€{finalPrice}</span>
             </div>
@@ -1187,9 +1199,16 @@ function CheckoutScreen({ appState, dispatch }) {
                   <span className="text-sm font-medium" style={{ color: C.text }}>€{checkoutAddOn.price.toFixed(2)}</span>
                 </div>
               )}
+              <div className="flex justify-between py-1.5">
+                <span className="text-sm flex items-center gap-1" style={{ color: C.muted }}>
+                  EuroMove {t('service_fee')}
+                  <span className="text-xs px-1 rounded" style={{ background: C.accent + '20', color: C.accent }}>3%</span>
+                </span>
+                <span className="text-sm font-medium" style={{ color: C.text }}>€{serviceFee.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between pt-2 mt-1 border-t" style={{ borderColor: C.border }}>
                 <span className="text-sm font-bold" style={{ color: C.text }}>{t('total')}</span>
-                <span className="text-base font-bold" style={{ color: C.accent }}>€{(checkoutPrice || 0).toFixed(2)}</span>
+                <span className="text-base font-bold" style={{ color: C.accent }}>€{finalPrice}</span>
               </div>
             </div>
           </div>
